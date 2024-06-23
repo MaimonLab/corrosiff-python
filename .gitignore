@@ -1,0 +1,36 @@
+target/
+*.tiff
+*.siff
+*.json
+*.ipynb
+*.dict
+*.ref
+*.roi
+*.*roi
+*.csv
+*.h5
+*.hdf5
+*.DS_Store
+.DS_Store
+
+# Distribution / packaging
+bin/
+build/
+develop-eggs/
+dist/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# C extensions
+*.so
