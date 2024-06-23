@@ -4,7 +4,6 @@
 use numpy::{IntoPyArray, PyArray1, PyArray2, PyArray3, PyArray4,
     PyReadonlyArray2, PyReadonlyArray3, PyReadonlyArray4,
 };
-use pyo3::ffi::Py_PRINT_RAW;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyTuple};
 use pyo3::PyTypeCheck;
@@ -503,13 +502,15 @@ impl SiffIO {
 
         let frames = frames_default!(frames, self);
 
+        let old_units = params.getattr("units")?;
+
+        params.call_method1("convert_units", ("countbins",))?;
+        let offset : f64 = params.getattr("tau_offset")?.extract()?;
+        params.call_method1("convert_units", (old_units,))?;
+
         if PyArray2::<bool>::type_check(&mask) {
             let mask : PyReadonlyArray2<bool> = mask.extract()?;
             let mask = mask.as_array();
-            let old_units = params.getattr("units")?;
-
-            params.call_method1("convert_units", ("countbins",))?;
-            let offset : f64 = params.getattr("tau_offset")?.extract()?;
 
             let (lifetime, intensity) = self.reader.sum_roi_flim_flat(&mask, &frames, registration.as_ref())
                 .map_err(_to_py_error)?;
@@ -522,18 +523,11 @@ impl SiffIO {
                 None::<PyArray3<f64>>,
             ).into_py(py);
 
-            params.call_method1("convert_units", (old_units,))?;
-
             return Ok(ret_tuple.into_bound(py))
         }
 
         let mask : PyReadonlyArray3<bool> = mask.extract()?;
         let mask = mask.as_array();
-
-        let old_units = params.getattr("units")?;
-        
-        params.call_method1("convert_units", ("countbins",))?;
-        let offset : f64 = params.getattr("tau_offset")?.extract()?;
 
         let (lifetime, intensity) = self.reader.sum_roi_flim_volume(&mask, &frames, registration.as_ref())
             .map_err(_to_py_error)?;
