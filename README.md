@@ -4,6 +4,11 @@ A hybrid `Python` and `Rust` package that wraps the
 `corrosiff` library for reading .siff files and
 presents a `Python` API.
 
+TODOS:
+
+-   As always, more documentation.
+-   Test suite that does not rely on my local files!
+
 Installation from source
 --------------------------
 

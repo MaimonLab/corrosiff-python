@@ -135,54 +135,54 @@ def test_sum_3d_mask(siffreaders):
             )
         ).all()
 
-#     def test_sum_2d_masks(siffreaders):
-#         corrosiff_sr : corrosiffpy.SiffIO = siffreaders[0]
-#         siffc_sr : siffreadermodule.SiffIO = siffreaders[1] 
+    def test_sum_2d_masks(siffreaders):
+        corrosiff_sr : corrosiffpy.SiffIO = siffreaders[0]
+        siffc_sr : siffreadermodule.SiffIO = siffreaders[1] 
 
-#         NUM_MASK_MAX = 7
+        NUM_MASK_MAX = 7
 
-#         rois = [np.random.rand(k, *corrosiff_sr.frame_shape()) > 0.3 for k in range(1,NUM_MASK_MAX)]
+        rois = [np.random.rand(k, *corrosiff_sr.frame_shape()) > 0.3 for k in range(1,NUM_MASK_MAX)]
 
-#         # Validate that they both cycle through the same way
-#         for k in range(1,NUM_PLANES):
-#             N_FRAMES = 10000 - (10000 % k)
+        # Validate that they both cycle through the same way
+        for k in range(1,NUM_PLANES):
+            N_FRAMES = 10000 - (10000 % k)
 
-#             # C++ API is consistent
-#             assert (
-#                 np.array([
-#                     siffc_sr.sum_rois(rois[k-1][p], frames = list(range(p, N_FRAMES ,k)),registration=None)
-#                     for p in range(k)
-#                 ]).T.flatten()
-#                 == siffc_sr.sum_rois(
-#                     rois[k-1], frames = list(range(N_FRAMES)), registration=None
-#                 ).flatten()
-#             ).all()
+            # # C++ API is consistent
+            # assert (
+            #     np.array([
+            #         siffc_sr.sum_rois(rois[k-1][p], frames = list(range(p, N_FRAMES ,k)),registration=None)
+            #         for p in range(k)
+            #     ]).T.flatten()
+            #     == siffc_sr.sum_rois(
+            #         rois[k-1], frames = list(range(N_FRAMES)), registration=None
+            #     ).flatten()
+            # ).all()
 
-#             # # Slicewise agrees
-#             assert (
-#             np.array([
-#                     siffc_sr.sum_rois(rois[k-1][p], frames = list(range(p, N_FRAMES ,k)),registration=None)
-#                     for p in range(k)
-#                 ]).T.flatten()
-#                 == np.array([
-#                     corrosiff_sr.sum_rois(rois[k-1][p], frames = list(range(p, N_FRAMES ,k)),registration=None)
-#                     for p in range(k)
-#                 ]).T.flatten() 
-#             ).all()
+            # # # Slicewise agrees
+            # assert (
+            # np.array([
+            #         siffc_sr.sum_rois(rois[k-1][p], frames = list(range(p, N_FRAMES ,k)),registration=None)
+            #         for p in range(k)
+            #     ]).T.flatten()
+            #     == np.array([
+            #         corrosiff_sr.sum_rois(rois[k-1][p], frames = list(range(p, N_FRAMES ,k)),registration=None)
+            #         for p in range(k)
+            #     ]).T.flatten() 
+            # ).all()
 
-#             # Rust API is consistent
-#             assert (
-#                 np.array([
-#                     corrosiff_sr.sum_rois(rois[k-1][p], frames = list(range(p, N_FRAMES ,k)),registration=None)
-#                     for p in range(k)
-#                 ]).T.flatten()
-#                 == corrosiff_sr.sum_rois(
-#                     rois[k-1], frames = list(range(N_FRAMES)), registration=None
-#                 ).flatten()
-#             ).all()
+            # # Rust API is consistent
+            # assert (
+            #     np.array([
+            #         corrosiff_sr.sum_rois(rois[k-1][p], frames = list(range(p, N_FRAMES ,k)),registration=None)
+            #         for p in range(k)
+            #     ]).T.flatten()
+            #     == corrosiff_sr.sum_rois(
+            #         rois[k-1], frames = list(range(N_FRAMES)), registration=None
+            #     ).flatten()
+            # ).all()
 
-#             # Whole volume agrees
-#             assert (
-#                 siffc_sr.sum_rois(rois[k-1], frames = list(range(N_FRAMES)), registration=None)
-#                 == corrosiff_sr.sum_rois(rois[k-1], frames = list(range(N_FRAMES)), registration=None)
-#             ).all()
+            # Whole volume agrees
+            assert (
+                siffc_sr.sum_rois(rois[k-1], frames = list(range(N_FRAMES)), registration=None)
+                == corrosiff_sr.sum_rois(rois[k-1], frames = list(range(N_FRAMES)), registration=None)
+            ).all()
