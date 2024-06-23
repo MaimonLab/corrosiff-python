@@ -1,6 +1,6 @@
 [build-system]
 requires = [
-    "maturin",
+    "maturin>=1.0",
     "wheel",
     "numpy",
 ]
@@ -32,4 +32,5 @@ dependencies = [
 [project.optional-dependencies]
 test = [
   "pytest",
+  "siffpy < 0.8.0"
 ]
