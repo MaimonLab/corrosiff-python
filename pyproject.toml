@@ -23,7 +23,7 @@ authors = [
 requires-python = ">=3.9.0"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: Rust",
+    "Programming Language :: Rust",
 ]
 dependencies = [
     "numpy >= 1.15",

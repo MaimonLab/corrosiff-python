@@ -316,7 +316,7 @@ impl SiffIO {
     pub fn flim_map_py<'py>(
         &self,
         py : Python<'py>,
-        params : &PyAny,
+        params : &Bound<'py,PyAny>,
         frames : Option<Vec<u64>>,
         confidence_metric : Option<&str>,
         registration : Option<HashMap<u64, (i32, i32)>>,
@@ -327,6 +327,7 @@ impl SiffIO {
 
         params.call_method1("convert_units", ("countbins",))?;
         let offset : f64 = params.getattr("tau_offset")?.extract()?;
+        params.call_method1("convert_units", (old_units,))?;
 
         let (lifetime, intensity) = self.reader.get_frames_flim(&frames, registration.as_ref())
             .map_err(_to_py_error)?;
@@ -338,8 +339,6 @@ impl SiffIO {
                 intensity.into_pyarray_bound(py),
                 None::<PyArray3<f64>>,
             ).into_py(py);
-
-        params.call_method1("convert_units", (old_units,))?;
 
         Ok(ret_tuple.into_bound(py))
     }
@@ -387,6 +386,39 @@ impl SiffIO {
         Ok(
             self.reader
             .get_histogram(&frames)
+            .map_err(_to_py_error)?
+            .into_pyarray_bound(py)
+        )
+    }
+
+    /// Returns a 2d histogram of the arrival time data
+    /// within the provided mask separated by frame.
+    /// The first axis is the frame number, the second axis
+    /// is the arrival time.
+    #[pyo3(name = "get_histogram_masked", signature = (mask, frames=None, registration=None))]
+    pub fn get_histograms_masked_py<'py>(
+        &self,
+        py : Python<'py>,
+        mask : Bound<'py, PyAny>,
+        frames : Option<Vec<u64>>,
+        registration : Option<HashMap<u64, (i32, i32)>>
+    ) -> PyResult<Bound<'py, PyArray2<u64>>> {
+
+        if !PyArray2::<bool>::type_check(&mask) {
+            return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                "Mask must be a 2d numpy array (for now). I plan to extend this\
+                 to 3d masks in the future."
+            ));
+        }
+
+        let frames = frames_default!(frames, self);
+
+        let mask : PyReadonlyArray2<bool> = mask.extract()?;
+        let mask = mask.as_array();
+
+        Ok(
+            self.reader
+            .get_histogram_mask(&frames, &mask, registration.as_ref())
             .map_err(_to_py_error)?
             .into_pyarray_bound(py)
         )
@@ -481,7 +513,7 @@ impl SiffIO {
         &self,
         py : Python<'py>,
         mask : &Bound<'py, PyAny>,
-        params : &PyAny,
+        params : &Bound<'py,PyAny>,
         frames : Option<Vec<u64>>,
         registration : Option<HashMap<u64, (i32, i32)>>,
     ) -> PyResult<Bound<'py, PyTuple>>
@@ -540,8 +572,6 @@ impl SiffIO {
             None::<PyArray3<f64>>,
         ).into_py(py);
 
-        params.call_method1("convert_units", (old_units,))?;
-
         Ok(ret_tuple.into_bound(py))
     }
 
@@ -550,7 +580,7 @@ impl SiffIO {
         &self,
         py : Python<'py>,
         masks : &Bound<'py, PyAny>,
-        params : &PyAny,
+        params : &Bound<'py,PyAny>,
         frames : Option<Vec<u64>>,
         registration : Option<HashMap<u64, (i32, i32)>>,
     ) -> PyResult<Bound<'py, PyTuple>>

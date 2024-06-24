@@ -804,6 +804,15 @@ class SiffIO():
             >>> ((629,), np.uint64)
 
             ```
+        
+        ## See also
+
+        - `get_histogram_by_frames` : The framewise version of this function,
+        returns the same data but with the frames as the slowest dimension 
+        (this is actually what's being called from `Rust`, then it's summed into
+        a single axis in this function call)
+
+        - `get_histogram_masked` : The masked version of this function.
         """
         ...
 
@@ -849,6 +858,68 @@ class SiffIO():
             ```
         """
         ...
+
+    def get_histogram_masked(
+        self,
+        mask : 'np.ndarray[Any, np.dtype[np.bool_]]',
+        frames : Optional[List[int]] = None,
+        registration : Optional[Dict] = None,
+    )-> 'np.ndarray[Any, np.dtype[np.uint64]]':
+        """
+        Returns a framewise histogram of the arrival
+        times of the photons in the mask.
+
+        ## Arguments
+
+        * `mask` : np.ndarray[Any, np.dtype[np.bool_]]
+            A boolean mask of the same shape as the frames
+            to be summed.
+
+        * `frames` : List[int]
+            A list of frames to retrieve. If `None`, all frames
+            will be retrieved.
+
+        * `registration` : Optional[Dict]
+            A dictionary containing registration information
+            (the keys correspond to the frame number, the values
+            are tuples of (y,x) offsets). If None, no registration
+            will be applied.
+
+        ## Returns
+
+        * `np.ndarray[Any, np.dtype[np.uint64]]`
+            A numpy array containing the histogram of dimensions
+            (`frames.len()`, `num_bins`). The histogram is
+            of the arrival times of the photons in the mask, with
+            each bin corresponding to an arrival time bin (so the
+            metadata must be read to transform this into real time units
+            like nanoseconds).
+
+        ## Example
+
+            ```python
+            import numpy as np
+            import corrosiffpy
+
+            # Load the file
+            filename = '/path/to/file.siff'
+            siffio = corrosiffpy.open_file(filename)
+
+            # Create a mask from random numbers
+            roi = np.random.rand(*siffio.frame_shape()) > 0.3
+
+            hist = siffio.get_histogram_masked(roi, frames = list(range(1000)))
+            print(hist.shape, hist.dtype)
+
+            # 629 time bins with a 20 picosecond resolution
+            # = 12.58 nanoseconds, ~ 80 MHz
+            >>> ((1000, 629), np.uint64)
+            ```
+
+        ## See also
+
+        - `get_histogram` : The unmasked version of this function.
+        """
 
     def get_experiment_timestamps(
         self,

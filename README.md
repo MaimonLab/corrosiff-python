@@ -1,4 +1,4 @@
-# Corrosiff-Py
+# Corrosiff-Python
 
 A hybrid `Python` and `Rust` package that wraps the
 `corrosiff` library for reading .siff files and
