@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-#corrosiff = { git = "https://github.com/MaimonLab/Corrosiff.git" }
-corrosiff = {path = "../corrosiff"}
+corrosiff = { git = "https://github.com/MaimonLab/Corrosiff.git" }
+#corrosiff = {path = "../corrosiff"}
 numpy = "*"
 pyo3 = { version = "0.21", features = ["extension-module"] }
 
