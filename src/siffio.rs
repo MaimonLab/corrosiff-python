@@ -312,22 +312,27 @@ impl SiffIO {
         )
     }
 
-    #[pyo3(name = "flim_map", signature = (params, frames = None, confidence_metric = "chi_sq", registration = None))]
+    #[pyo3(name = "flim_map", signature = (params = None, frames = None, confidence_metric = "chi_sq", registration = None))]
     pub fn flim_map_py<'py>(
         &self,
         py : Python<'py>,
-        params : &Bound<'py,PyAny>,
+        params : Option<&Bound<'py,PyAny>>,
         frames : Option<Vec<u64>>,
         confidence_metric : Option<&str>,
         registration : Option<HashMap<u64, (i32, i32)>>,
     ) -> PyResult<Bound<'py, PyTuple>>{
         let frames = frames_default!(frames, self);
         
-        let old_units = params.getattr("units")?;
-
-        params.call_method1("convert_units", ("countbins",))?;
-        let offset : f64 = params.getattr("tau_offset")?.extract()?;
-        params.call_method1("convert_units", (old_units,))?;
+        let mut offset = 0.0;
+        match params {
+            Some(params) => {
+                let old_units = params.getattr("units")?;
+                params.call_method1("convert_units", ("countbins",))?;
+                offset = params.getattr("tau_offset")?.extract()?;
+                params.call_method1("convert_units", (old_units,))?;
+            },
+            None => {}
+        }
 
         let (lifetime, intensity) = self.reader.get_frames_flim(&frames, registration.as_ref())
             .map_err(_to_py_error)?;
@@ -528,12 +533,12 @@ impl SiffIO {
         )
     }
 
-    #[pyo3(name = "sum_roi_flim", signature = (mask, params, frames = None, registration = None))]
+    #[pyo3(name = "sum_roi_flim", signature = (mask, params = None, frames = None, registration = None))]
     pub fn sum_roi_flim_py<'py>(
         &self,
         py : Python<'py>,
         mask : &Bound<'py, PyAny>,
-        params : &Bound<'py,PyAny>,
+        params : Option<&Bound<'py,PyAny>>,
         frames : Option<Vec<u64>>,
         registration : Option<HashMap<u64, (i32, i32)>>,
     ) -> PyResult<Bound<'py, PyTuple>>
@@ -554,11 +559,14 @@ impl SiffIO {
 
         let frames = frames_default!(frames, self);
 
-        let old_units = params.getattr("units")?;
+        let mut offset = 0.0;
+        if let Some(params) = params {
+            let old_units = params.getattr("units")?;
 
-        params.call_method1("convert_units", ("countbins",))?;
-        let offset : f64 = params.getattr("tau_offset")?.extract()?;
-        params.call_method1("convert_units", (old_units,))?;
+            params.call_method1("convert_units", ("countbins",))?;
+            offset = params.getattr("tau_offset")?.extract()?;
+            params.call_method1("convert_units", (old_units,))?;
+        }
 
         if PyArray2::<bool>::type_check(&mask) {
             let mask : PyReadonlyArray2<bool> = mask.extract()?;
@@ -595,12 +603,12 @@ impl SiffIO {
         Ok(ret_tuple.into_bound(py))
     }
 
-    #[pyo3(name = "sum_rois_flim", signature = (masks, params, frames = None, registration = None))]
+    #[pyo3(name = "sum_rois_flim", signature = (masks, params = None, frames = None, registration = None))]
     pub fn sum_rois_flim_py<'py>(
         &self,
         py : Python<'py>,
         masks : &Bound<'py, PyAny>,
-        params : &Bound<'py,PyAny>,
+        params : Option<&Bound<'py,PyAny>>,
         frames : Option<Vec<u64>>,
         registration : Option<HashMap<u64, (i32, i32)>>,
     ) -> PyResult<Bound<'py, PyTuple>>
@@ -615,19 +623,19 @@ impl SiffIO {
         }
 
         let frames = frames_default!(frames, self);
+        let mut offset = 0.0;
+        if let Some(params) = params {
+            let old_units = params.getattr("units")?;
 
-        let old_units = params.getattr("units")?;
-
-        params.call_method1("convert_units", ("countbins",))?;
-        let offset : f64 = params.getattr("tau_offset")?.extract()?;
-        params.call_method1("convert_units", (old_units,))?;
+            params.call_method1("convert_units", ("countbins",))?;
+            offset = params.getattr("tau_offset")?.extract()?;
+            params.call_method1("convert_units", (old_units,))?;
+        }
 
         if PyArray3::<bool>::type_check(&masks) {
             let masks : PyReadonlyArray3<bool> = masks.extract()?;
             let masks = masks.as_array();
             
-            let offset : f64 = params.getattr("tau_offset")?.extract()?;
-
             let (lifetime, intensity) = self.reader.sum_rois_flim_flat(
                 &masks, &frames, registration.as_ref()
             ).map_err(_to_py_error)?;

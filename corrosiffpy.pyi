@@ -225,13 +225,13 @@ class SiffIO():
 
     def flim_map(
         self,
-        params : 'FLIMParams',
-        frames : List[int],
+        params : Optional['FLIMParams'],
+        frames : Optional[List[int]],
         confidence_metric : str = 'chi_sq',
         registration : Optional[Dict] = None,
     )->Tuple['np.ndarray[Any, np.dtype[np.float64]]', 'np.ndarray[Any, np.dtype[np.uint16]]', 'np.ndarray[Any, np.dtype[np.float64]]']:
         """
-        Returns a tuple of (flim_map, intensity_map, confidence_map)
+        Returns a tuple of `(flim_map, intensity_map, confidence_map)`
         where flim_map is the empirical lifetime with the offset of
         params subtracted. WARNING! This is DIFFERENT from the `siffreadermodule`
         implementation, which returns ONLY the empirical lifetime! This
@@ -242,7 +242,8 @@ class SiffIO():
 
         * `params` : FLIMParams
             The FLIM parameters to use for the analysis. The offset
-            term will be subtracted from the empirical lifetime values
+            term will be subtracted from the empirical lifetime values.
+            If `None`, the offset will be 0.
 
         * `frames` : List[int]
             A list of frames to retrieve. If `None`, all frames
@@ -560,8 +561,7 @@ class SiffIO():
     def sum_roi_flim(
         self,
         mask : 'np.ndarray[Any, np.dtype[np.bool_]]',
-        params : 'FLIMParams',
-        *,
+        params : Optional['FLIMParams'],
         frames : Optional[List[int]] = None,
         registration : Optional[Dict] = None,
     )->Tuple[
@@ -602,6 +602,11 @@ class SiffIO():
             provided, i.e. `mask[0]` is applied to `frames[0]`,
             `mask[1]` is applied to `frames[1]`, ... `mask[k]` is
             applied to `frames[n]` where `k = n % mask.shape[0]`.
+        
+        * `params` : Optional[FLIMParams]
+            The FLIM parameters to use for the analysis. The offset
+            term will be subtracted from the empirical lifetime values.
+            If `None`, the offset will be 0.
 
         * `frames` : Optional[List[int]]
             A list of frames to retrieve. If `None`, all frames
@@ -703,8 +708,7 @@ class SiffIO():
     def sum_rois_flim(
         self,
         masks : 'np.ndarray[Any, np.dtype[np.bool_]]',
-        params : 'FLIMParams',
-        *,
+        params : Optional['FLIMParams'],
         frames : Optional[List[int]] = None,
         registration : Optional[Dict] = None,
     ) -> Tuple[
@@ -749,6 +753,11 @@ class SiffIO():
             `masks[1,0,...]` is applied to `frames[0]`, `masks[1,1,...]` is applied
             to `frames[1]`, ... `masks[1,k,...]` is applied to `frames[n]` where
             `k = n % masks.shape[1]`.
+
+        * `params` : Optional[FLIMParams]
+            The FLIM parameters to use for the analysis. The offset
+            term will be subtracted from the empirical lifetime values.
+            If `None`, the offset will be 0.
 
         * `frames` : Optional[List[int]]
             A list of frames to retrieve. If `None`, all frames
