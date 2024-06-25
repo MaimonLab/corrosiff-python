@@ -165,5 +165,5 @@ jobs:
         env:
           MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         with:
-          command: upload -r testpypi
+          command: upload
           args: --repository-url=https://test.pypi.org/legacy/ --non-interactive wheels-*/*{.whl,.tar.gz}
