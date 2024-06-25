@@ -1,16 +1,16 @@
 name: Build wheels
 
 on:
-    pull_request:
-        branches:
-            - main
-            - dev
-    push:
-        branches:
-            - main
-            - dev
-        # tags:
-        #     - v*
+  pull_request:
+    branches:
+      - main
+      - dev
+  push:
+    branches:
+      - main
+      - dev
+# tags:
+#     - v*
 
 jobs:
   build_wheels:
@@ -30,6 +30,7 @@ jobs:
           CIBW_BEFORE_ALL_LINUX: curl -sSf https://sh.rustup.rs | sh -s -- -y
           CIBW_BEFORE_ALL_WINDOWS: rustup target add i686-pc-windows-msvc
           CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH"
+          CIBW_MANYLINUX_*_IMAGE: manylinux2014
         #     CIBW_TEST_REQUIRES: pytest
         #     CIBW_TEST_COMMAND: "pytest {project}/tests"
 
