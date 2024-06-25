@@ -4,9 +4,9 @@
 use numpy::{IntoPyArray, PyArray1, PyArray2, PyArray3, PyArray4,
     PyReadonlyArray2, PyReadonlyArray3, PyReadonlyArray4,
 };
+use pyo3::PyTypeCheck;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyTuple};
-use pyo3::PyTypeCheck;
 use corrosiff::{CorrosiffError, SiffReader, FramesError};
 
 use std::collections::HashMap;

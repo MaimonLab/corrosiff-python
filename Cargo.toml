@@ -5,10 +5,10 @@ edition = "2021"
 rust-version = "1.66.0"
 
 [dependencies]
-corrosiff = { git = "https://github.com/MaimonLab/Corrosiff.git" }
+corrosiff = { git = "https://github.com/MaimonLab/Corrosiff.git" , branch = "master"}
 #corrosiff = {path = "../corrosiff"}
-numpy = "*"
-pyo3 = { version = "0.21", features = ["extension-module"] }
+numpy = ">=0.18"
+pyo3 = { version = ">=0.21", features = ["extension-module"] }
 
 [lib]
 name = "corrosiffpy"
