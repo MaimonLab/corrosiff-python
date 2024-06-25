@@ -166,4 +166,4 @@ jobs:
           MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         with:
           command: upload -r testpypi
-          args: --non-interactive --skip-existing wheels-*
+          args: --non-interactive --skip-existing */*/*{.whl,.tar.gz}
