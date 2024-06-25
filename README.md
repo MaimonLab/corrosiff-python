@@ -9,12 +9,24 @@ TODOS:
 -   As always, more documentation.
 -   Test suite that does not rely on my local files!
 
+Installation with a package manager
+----------------------------------
+
+I'm starting to host things on PyPI and a private
+`conda` channel (`maimon-forge` on the Rockefeller
+server). Watch this space for updates....
+
 Installation from source
 --------------------------
 
 Everyone has a bunch of different `Python`
 installations and different solutions for
-managing them.
+managing them. Because this package relies on
+`Rust`, if you're installing from source
+you need a `Rust` compiler. The main way to manage
+`Rust` and its dependencies is [`cargo`](https://doc.rust-lang.org/cargo/getting-started/installation.html).
+Once you have `cargo` you can install with `pip` or
+`maturin`.
 
 ## Install to a local environment
 
@@ -57,6 +69,14 @@ import corrosiffpy
 siffio : 'corrosiffpy.SiffIO' = corrosiffpy.open_file(
     'path_to_my_file'
 )
+
+frames = siffio.get_frames(frames=list(range(200)))
+
+print(frames.shape, frame.dtype)
+
+>>> ((200, 256, 256), np.uint16)
+
+lifetime, intensity, _ = siffio.get_frames_flim(frames = list(range(200)))
 
 ```
 
