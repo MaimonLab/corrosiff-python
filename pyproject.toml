@@ -12,7 +12,7 @@ module-name = "corrosiffpy"
 
 [project]
 name = "corrosiffpy"
-version = "0.1.1.dev0"
+version = "0.1.1+dev0"
 readme = "README.md"
 description = "A Python wrapper for the `Rust` `corrosiff` library"
 license = {text="GPL-3.0-or-later"}
