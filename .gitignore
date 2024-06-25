@@ -1,4 +1,3 @@
-target/
 *.tiff
 *.siff
 *.json
@@ -27,6 +26,7 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+target/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -35,3 +35,6 @@ __pycache__/
 
 # C extensions
 *.so
+
+# Testing env
+.tox/

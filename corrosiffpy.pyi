@@ -297,13 +297,69 @@ class SiffIO():
         """
         ...
 
+    def get_frames_full(
+        self,
+        frames : Optional[List[int]] = None,
+        registration : Optional[Dict] = None,
+    ) -> 'np.ndarray[Any, np.dtype[np.uint16]]':
+        """
+        Returns a full-dimensioned array:
+        (frames, y, x, arrival_time). This is a
+        large array -- with 20 picosecond arrival
+        time bins and an 80 MHz laser this is 
+        ~600x bigger than the usual image array!
+
+        ## Arguments
+
+        * `frames` : Optional[List[int]]
+            A list of frames to retrieve. If `None`, all frames
+            will be retrieved.
+
+        * `registration` : Optional[Dict]
+            A dictionary containing registration information
+            (the keys correspond to the frame number, the values
+            are tuples of (y,x) offsets). If None, no registration
+            will be applied.
+
+        ## Returns
+
+        * `np.ndarray[Any, np.dtype[np.uint16]]`
+            A numpy array containing the pixelwise arrival time
+            histograms for all frames requested. Dimensions are
+            `(frames.len(), y, x, arrival_time_bins)`
+
+        ## Example
+
+            ```python
+            import corrosiffpy
+
+            # Load the file
+            filename = '/path/to/file.siff'
+            siffio = corrosiffpy.open_file(filename)
+
+            # Get the data as an array
+            frame_data = siffio.get_frames_full(list(range(1000)))
+
+            print(frame_data.shape, frame_data.dtype)
+            # This is a 330 GB array!!
+            >>> ((1000, 512, 512, 629), np.uint16)
+            ```
+
+        ## See also
+
+        - `get_frames` : For just the intensity data
+
+        - `flim_map` : For average arrival time + intensity data. 
+        """
+        ...
+
     def sum_roi(
         self,
         mask : 'np.ndarray[Any, np.dtype[np.bool_]]',
         *,
         frames : Optional[List[int]] = None,
         registration : Optional[Dict] = None,
-    )->'np.ndarray[Any, np.dtype[np.uint64]]':
+    ) -> 'np.ndarray[Any, np.dtype[np.uint64]]':
         """
         Mask may have 2 or 3 dimensions, but
         if so then be aware that the frames will be

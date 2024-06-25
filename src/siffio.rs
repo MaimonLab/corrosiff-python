@@ -343,6 +343,26 @@ impl SiffIO {
         Ok(ret_tuple.into_bound(py))
     }
 
+    /// Returns the full data as an array of dimensions:
+    /// frames x height x width x arrival time
+    #[pyo3(name = "get_frames_full", signature = (frames = None, registration = None))]
+    pub fn get_frames_full_py<'py>(
+        &self,
+        py : Python<'py>,
+        frames : Option<Vec<u64>>,
+        registration : Option<HashMap<u64, (i32, i32)>>
+    ) -> PyResult<Bound<'py, PyArray4<u16>>>
+    {
+        let frames = frames_default!(frames, self);
+
+        Ok(
+            self.reader
+            .get_frames_tau_d(&frames, registration.as_ref())
+            .map_err(_to_py_error)?
+            .into_pyarray_bound(py)
+        )
+    }
+
     /*******************************************************
      * 
      * 
