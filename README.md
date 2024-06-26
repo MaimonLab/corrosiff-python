@@ -76,7 +76,20 @@ print(frames.shape, frame.dtype)
 
 >>> ((200, 256, 256), np.uint16)
 
-lifetime, intensity, _ = siffio.get_frames_flim(frames = list(range(200)))
+lifetime, intensity, _ = siffio.flim_map(frames = list(range(200)))
+
+print(lifetime.shape, lifetime.dtype, intensity.shape, intensity.dtype)
+
+>>> ((200,256,256), np.float64, (200,256,256), np.uint16)
+
+masks = np.ones((4, 256, 256), dtype= bool)
+masks[:,:128,:] = False
+
+masked_rois = siffio.sum_rois(masks, frames = list(range(200)))
+
+print(masked_rois.shape, masked_rois.dtype)
+
+>> ((4, 200), np.uint64)
 
 ```
 
