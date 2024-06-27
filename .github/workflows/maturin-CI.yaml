@@ -57,7 +57,7 @@ jobs:
           set -e
           python3 -m venv .venv
           source .venv/bin/activate
-          pip install corrosiffpy --find-links dist --force-reinstall
+          pip install corrosiffpy[test] --find-links dist --force-reinstall
           pip install pytest
           pytest
       - name: pytest
@@ -73,7 +73,7 @@ jobs:
             pip3 install -U pip pytest
           run: |
             set -e
-            pip3 install corrosiffpy --find-links dist --force-reinstall
+            pip3 install corrosiffpy[test] --find-links dist --force-reinstall
             pytest tests
 
   musllinux:
@@ -120,7 +120,7 @@ jobs:
             python3 -m virtualenv .venv
             source .venv/bin/activate
             pip install pytest
-            pip install corrosiffpy --find-links dist --force-reinstall
+            pip install corrosiffpy[test] --find-links dist --force-reinstall
             pytest tests
 
   windows:
@@ -156,7 +156,7 @@ jobs:
           set -e
           python3 -m venv .venv
           source .venv/Scripts/activate
-          pip install corrosiffpy --find-links dist --force-reinstall
+          pip install corrosiffpy[test] --find-links dist --force-reinstall
           pip install pytest
           pytest tests
 
@@ -191,7 +191,7 @@ jobs:
           python3 -m venv .venv
           source .venv/bin/activate
           pip install corrosiffpy --find-links dist --force-reinstall
-          pip install pytest
+          pip install pytest[test]
           pytest tests
         
 
