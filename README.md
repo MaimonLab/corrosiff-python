@@ -1,20 +1,26 @@
 # Corrosiff-Python
 
+![GitHub CI](https://github.com/MaimonLab/corrosiff-python/actions/workflows/maturin-CI.yaml/badge.svg)
+
 A hybrid `Python` and `Rust` package that wraps the
 `corrosiff` library for reading .siff files and
 presents a `Python` API.
 
-TODOS:
-
--   As always, more documentation.
--   Test suite that does not rely on my local files!
+# Installation
 
 Installation with a package manager
 ----------------------------------
 
 I'm starting to host things on PyPI and a private
 `conda` channel (`maimon-forge` on the Rockefeller
-server). Watch this space for updates....
+server). Watch this space for updates...
+
+For now, this is hosted on the TEST PyPI repository,
+and can be reached with
+
+```
+pip install --index-url https://test.pypi.org/legacy corrosiffpy
+```
 
 Installation from source
 --------------------------
@@ -93,6 +99,28 @@ print(masked_rois.shape, masked_rois.dtype)
 
 ```
 
+# Python API
+
+The module contains only a few functions:
+
+- `siff_to_tiff`
+    A currently-unimplemented function to convert `.siff` files
+    to `.tiff` data, sacrificing the arrival time information
+
+- `open_file`
+    A function that returns the `SiffIO` class, the primary `Python`
+    interface to the `corrosiff` library.
+
+`SiffIO`
+---------
+
+The `SiffIO` class wraps the methods of the `SiffReader` struct in `Rust`,
+returning `Python` versions of the various arrays, strings, and metadata.
+Most functions read frames from the file stream, so you never have to actually
+load the file into memory (which can be good -- many resonant scanning imaging
+files are very large), and return `numpy` arrays.
+
+
 Testing
 ----------
 
@@ -114,3 +142,6 @@ I start to develop new features selectively in `corrosiff`, I will also start ma
 tests that are specific to the `corrosiffpy` module and actually test functionality
 instead of just comparing the `C++` backend. Note that these tests require
 `pytest` and `siffpy`, so you'll need to install the `test` optional dependencies.
+
+They are far from exhaustive and do not test every possible error condition, nor
+do they test corrupt files (yet).
