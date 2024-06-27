@@ -3,7 +3,33 @@ For now these just test that the methods run!
 """
 import numpy as np
 
-from siffpy.core.flim import FLIMParams, Exp, Irf
+class FLIMParams:
+    """ Dummy version of the SiffPy FLIMParams class"""
+    def __init__(self, *args):
+        self.params = args
+
+    def as_units(self, units):
+        return self
+    
+    @property
+    def tau_offset(self):
+        try:
+            next(param for param in self.params if isinstance(param, Irf)).offset
+        except StopIteration:
+            return 0
+    
+    
+class Exp:
+    def __init__(self, tau, frac, units):
+        self.tau = tau
+        self.frac = frac
+        self.units = units
+
+class Irf:
+    def __init__(self, offset, sigma, units):
+        self.offset = offset
+        self.sigma = sigma
+        self.units = units
 
 def test_read_histogram(siffreaders):
 

@@ -32,5 +32,4 @@ dependencies = [
 [project.optional-dependencies]
 test = [
   "pytest",
-  "siffpy @ git+https://github.com/MaimonLab/SiffPy.git",
 ]
