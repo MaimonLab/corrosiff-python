@@ -60,6 +60,13 @@ jobs:
           pip install corrosiffpy[test] --find-links dist --force-reinstall
           pip install pytest
           pytest
+        env:
+          DROPBOX_SECRET: ${{ secrets.DROPBOX_SECRET }}
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+          DROPBOX_SHARED_LINK: ${{ secrets.DROPBOX_SHARED_LINK }}
+
+
       - name: pytest
         if: ${{ !startsWith(matrix.platform.target, 'x86') && matrix.platform.target != 'ppc64' }}
         uses: uraimo/run-on-arch-action@v2
@@ -159,6 +166,11 @@ jobs:
           pip install corrosiffpy[test][test] --find-links dist --force-reinstall
           pip install pytest
           pytest tests
+        env:
+          DROPBOX_SECRET: ${{ secrets.DROPBOX_SECRET }}
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+          DROPBOX_SHARED_LINK: ${{ secrets.DROPBOX_SHARED_LINK }}
 
   macos:
     runs-on: ${{ matrix.platform.runner }}
@@ -193,6 +205,11 @@ jobs:
           pip install corrosiffpy[test] --find-links dist --force-reinstall
           pip install pytest
           pytest tests
+        env:
+          DROPBOX_SECRET: ${{ secrets.DROPBOX_SECRET }}
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+          DROPBOX_SHARED_LINK: ${{ secrets.DROPBOX_SHARED_LINK }}
         
 
   sdist:
