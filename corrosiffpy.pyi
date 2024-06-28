@@ -1224,11 +1224,9 @@ def siff_to_tiff(
         sourcepath : str,
         /,
         savepath : Optional[str] = None,
-        mode : Optional[str] = None,
+        mode : Optional[str] = 'ScanImage',
     )->None:
     """
-    **NOT IMPLEMENTED IN CORROSIFF YET. FOR NOW PYTHON JUST CALLS THE C++ ONE**
-
     Converts a .siff file to a .tiff file containing only intensity information.
 
     TODO: Contain OME-TIFF metadata for more convenient ImageJ/Fiji viewing of
@@ -1249,7 +1247,7 @@ def siff_to_tiff(
 
     mode : str
 
-        Either 'scanimage' or 'ome'. If 'scanimage', will save the tiff
+        Either 'ScanImage' or 'OME'. If 'ScanImage', will save the tiff
         in the same format as ScanImage, with the same metadata. For
         more info about the ScanImage tiff specification, see
         https://docs.scanimage.org/Appendix/ScanImage+BigTiff+Specification.html

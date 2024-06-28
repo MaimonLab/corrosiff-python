@@ -69,7 +69,7 @@ fn corrosiff_python<'py>(_py: Python<'py>, m: &Bound<'py, PyModule>)
     #[pyfn(m)]
     #[pyo3(
         name = "siff_to_tiff",
-        signature = (sourcepath, savepath = None, mode = "scanimage")
+        signature = (sourcepath, savepath = None, mode = "ScanImage")
     )]
     fn siff_to_tiff_py<'py>(
         py : Python<'py>,
@@ -77,9 +77,14 @@ fn corrosiff_python<'py>(_py: Python<'py>, m: &Bound<'py, PyModule>)
         savepath : Option<&str>,
         mode : Option<&str>,
     ) -> PyResult<()> {
-        Err(PyErr::new::<pyo3::exceptions::PyNotImplementedError, _>(
-            "This function is not yet implemented"
-        ))
+        let mode = mode.unwrap_or("ScanImage");
+        let savepath = savepath.map(|s| s.to_string());
+        let mode = corrosiff::TiffMode::from_string_slice(mode)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(format!("{}", e)) )?;
+
+        corrosiff::siff_to_tiff(sourcepath, mode, savepath.as_ref())
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e)) )?;
+        Ok(())
     }
 
     Ok(())
