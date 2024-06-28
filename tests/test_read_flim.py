@@ -143,8 +143,7 @@ def test_sum_3d_mask(siffreaders):
         )
 
         for three_d_roi in rois:
-            with test_params.as_units('countbins'):
-                siffreader.sum_roi_flim(three_d_roi, test_params, registration=None)[0]
+            siffreader.sum_roi_flim(three_d_roi, test_params, registration=None)[0]
 
             dummy_reg = {
                 k : (
@@ -155,7 +154,6 @@ def test_sum_3d_mask(siffreaders):
 
             framelist = list(range(N_FRAMES))
 
-            with test_params.as_units('countbins'):
-                siffreader.sum_roi_flim(three_d_roi, test_params, frames = framelist, registration=dummy_reg)
+            siffreader.sum_roi_flim(three_d_roi, test_params, frames = framelist, registration=dummy_reg)
 
-                siffreader.sum_roi_flim(three_d_roi, test_params, frames = framelist, registration=dummy_reg)[0]
+            siffreader.sum_roi_flim(three_d_roi, test_params, frames = framelist, registration=dummy_reg)[0]
