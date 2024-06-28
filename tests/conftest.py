@@ -1,12 +1,15 @@
 from typing import Tuple
 import pytest
 from pathlib import Path
+import os
 
 import corrosiffpy
 
-#filename = '/Users/stephen/Desktop/Data/imaging/2024-04/2024-04-17/21Dhh_GCaFLITS/Fly1/Flashes_1.siff'
-filename = '/Users/stephen/Desktop/Data/imaging/2024-05/2024-05-27/R60D05_TqCaFLITS/Fly1/EBAgain_1.siff'
-#filename = '/Users/stephen/Desktop/Data/imaging/2024-05/2024-05-27/SS02255_greenCamui_alpha/Fly1/PB_1.siff'
+LOCAL_TEST_FILES = [
+    '/Users/stephen/Desktop/Data/imaging/2024-04/2024-04-17/21Dhh_GCaFLITS/Fly1/Flashes_1.siff',
+    '/Users/stephen/Desktop/Data/imaging/2024-05/2024-05-27/R60D05_TqCaFLITS/Fly1/EBAgain_1.siff',
+    '/Users/stephen/Desktop/Data/imaging/2024-05/2024-05-27/SS02255_greenCamui_alpha/Fly1/PB_1.siff',
+]
 
 def download_files_from_dropbox(local_path : Path):
     """
@@ -14,7 +17,6 @@ def download_files_from_dropbox(local_path : Path):
     on Dropbox. Short-to-medium term filesharing
     solution
     """
-    import os
     from dropbox import Dropbox
     import dropbox
 
@@ -41,8 +43,16 @@ def siffreaders(tmp_path_factory) -> Tuple['corrosiffpy.SiffIO']:
     # files from the server to it.
     
     tmp_dir = tmp_path_factory.mktemp("test_siff_files")
-    
-    download_files_from_dropbox(tmp_dir)
+
+    if 'DROPBOX_SECRET_TOKEN' in os.environ:
+        download_files_from_dropbox(tmp_dir)
+    else:
+        # Copy local test files to the temporary directory
+        for file in LOCAL_TEST_FILES:
+            file_path = Path(file)
+            file_name = file_path.name
+            os.system(f'cp {file} {tmp_dir}/{file_name}')
+
     return tuple(
         [
             corrosiffpy.open_file(str(filename))

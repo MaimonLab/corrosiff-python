@@ -21,7 +21,7 @@ class FLIMParams:
     @property
     def tau_offset(self):
         try:
-            next(param for param in self.params if isinstance(param, Irf)).offset
+            return next(param for param in self.params if isinstance(param, Irf)).offset
         except StopIteration:
             return 0
     

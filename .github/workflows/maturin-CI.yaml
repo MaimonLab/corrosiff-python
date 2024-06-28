@@ -83,11 +83,11 @@ jobs:
             set -e
             pip3 install corrosiffpy[test] --find-links dist --force-reinstall
             pytest tests
-          # env:
-          #   DROPBOX_SECRET: ${{ secrets.DROPBOX_SECRET }}
-          #   DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
-          #   DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
-          #   DROPBOX_SHARED_LINK: ${{ secrets.DROPBOX_SHARED_LINK }}
+          env: |
+            DROPBOX_SECRET: ${{ secrets.DROPBOX_SECRET }}
+            DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+            DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+            DROPBOX_SHARED_LINK: ${{ secrets.DROPBOX_SHARED_LINK }}
 
   musllinux:
     runs-on: ${{ matrix.platform.runner }}
@@ -135,11 +135,11 @@ jobs:
             pip install pytest
             pip install corrosiffpy[test] --find-links dist --force-reinstall
             pytest tests
-          # env:
-          #   DROPBOX_SECRET: ${{ secrets.DROPBOX_SECRET }}
-          #   DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
-          #   DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
-          #   DROPBOX_SHARED_LINK: ${{ secrets.DROPBOX_SHARED_LINK }}
+          env: |
+            DROPBOX_SECRET: ${{ secrets.DROPBOX_SECRET }}
+            DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+            DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+            DROPBOX_SHARED_LINK: ${{ secrets.DROPBOX_SHARED_LINK }}
 
   windows:
     runs-on: ${{ matrix.platform.runner }}
