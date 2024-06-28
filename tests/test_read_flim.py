@@ -55,8 +55,7 @@ def test_read_flim_frames(siffreaders):
             Irf(offset = 1.1, sigma = 0.2, units = 'nanoseconds'),
         )
 
-        with test_params.as_units('countbins'):
-            siffreader.flim_map(test_params, registration=None)[0]
+        siffreader.flim_map(test_params, registration=None)[0]
 
         dummy_reg = {
             k : (
@@ -66,10 +65,9 @@ def test_read_flim_frames(siffreaders):
         }
         framelist = list(range(N_FRAMES))
 
-        with test_params.as_units('countbins'):
-            siffreader.flim_map(params = test_params, frames = framelist, registration=None)[0]
+        siffreader.flim_map(params = test_params, frames = framelist, registration=None)[0]
 
-            siffreader.flim_map(params = test_params, frames = framelist, registration=dummy_reg)[0]
+        siffreader.flim_map(params = test_params, frames = framelist, registration=dummy_reg)[0]
 
 def test_sum_2d_mask(siffreaders):
 
@@ -116,14 +114,13 @@ def test_sum_2d_mask(siffreaders):
 
         framelist = list(range(N_FRAMES))
 
-        with test_params.as_units('countbins'):
 
-            lifetimes, intensities, _ = siffreader.sum_rois_flim(masks, test_params, frames = framelist, registration=dummy_reg)
-            #assert intensities
+        lifetimes, intensities, _ = siffreader.sum_rois_flim(masks, test_params, frames = framelist, registration=dummy_reg)
+        #assert intensities
 
-            siffreader.sum_rois_flim(masks, test_params, frames = framelist, registration=dummy_reg)[0]
+        siffreader.sum_rois_flim(masks, test_params, frames = framelist, registration=dummy_reg)[0]
 
-            siffreader.sum_rois_flim(masks, test_params, frames = framelist, registration=None)[0]
+        siffreader.sum_rois_flim(masks, test_params, frames = framelist, registration=None)[0]
 
 def test_sum_3d_mask(siffreaders):
 
