@@ -11,6 +11,13 @@ class FLIMParams:
     def as_units(self, units):
         return self
     
+    def convert_units(self, units):
+        pass
+    
+    @property
+    def units(self):
+        return 'nanoseconds'
+
     @property
     def tau_offset(self):
         try:
