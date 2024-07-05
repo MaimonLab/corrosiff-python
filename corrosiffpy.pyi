@@ -1232,20 +1232,19 @@ def siff_to_tiff(
     TODO: Contain OME-TIFF metadata for more convenient ImageJ/Fiji viewing of
     output.
 
-    Arguments
-    --------
+    ## Arguments
 
-    sourcepath : str
+    - `sourcepath` : str
 
         Path to a .siff file (will also work for a .tiff file, though I don't know
         why you'd try that)
 
-    savepath : str
+    - `savepath` : str
 
         Path to where the .tiff should be saved. If None, will be saved
         in same directory as the .siff file.
 
-    mode : str
+    - `mode` : str
 
         Either 'ScanImage' or 'OME'. If 'ScanImage', will save the tiff
         in the same format as ScanImage, with the same metadata. For
@@ -1255,5 +1254,74 @@ def siff_to_tiff(
         If 'ome',
         will save the tiff as an OME-TIFF, which is more convenient for
         viewing in Fiji/ImageJ, but contaminates the metadata of the first frame.
+    """
+    ...
+
+def get_start_timestamp(file_path : str) -> int:
+    """
+    Returns the first timestamp of the file in nanoseconds
+    since the epoch.
+
+    ## Arguments
+
+    * `file_path` : str
+        The path to the file.
+
+    ## Returns
+
+    * `int`
+        The first timestamp of the file in nanoseconds
+        since the epoch.
+
+    ## See also
+
+    - `get_start_and_end_timestamps`, which returns both the first
+    and last timestamps of the file. Much slower because it has to
+    find the last frame.
+
+    ## Example
+
+        ```python
+        import corrosiffpy
+
+        corrosiffpy.get_start_timestamp('/path/to/file.siff')
+
+        >>> 1713382945416945800
+        ```
+    """
+    ...
+
+def get_start_and_end_timestamps(file_path : str) -> Tuple[int, int]:
+    """
+    Returns the first and last timestamps of the file in nanoseconds
+    since the epoch.
+
+    ## Arguments
+
+    * `file_path` : str
+        The path to the file.
+
+    ## Returns
+
+    * `Tuple[int, int]`
+        The first and last timestamps of the file in nanoseconds
+        since the epoch.
+
+    ## See also
+
+    - `get_start_timestamp`, runs ~10000x faster for a few GB-sized
+    `.siff` file, and the gains get better with bigger files
+    because it doesn't have to crawl the whole file to find the
+    last frame.
+
+    ## Example
+
+        ```python
+        import corrosiffpy
+
+        corrosiffpy.get_start_and_end_timestamps('/path/to/file.siff')
+
+        >>> (1713382945416945800, 1713383893239559800)
+        ```
     """
     ...

@@ -15,11 +15,8 @@ I'm starting to host things on PyPI and a private
 `conda` channel (`maimon-forge` on the Rockefeller
 server). Watch this space for updates...
 
-For now, this is hosted on the TEST PyPI repository,
-and can be reached with
-
 ```
-pip install --index-url https://test.pypi.org/legacy corrosiffpy
+pip install corrosiffpy
 ```
 
 Installation from source

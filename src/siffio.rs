@@ -56,6 +56,11 @@ fn _to_py_error(e : CorrosiffError) -> PyErr {
                 "This method is not yet implemented".to_string()
             );
         },
+        CorrosiffError::FileFormatError => {
+            return PyErr::new::<pyo3::exceptions::PyIOError, _>(
+                "File format error -- likely invalid or incompletely-transferred .siff file".to_string()
+            );
+        }
         _ => PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{:?}", e))
     }
 }
@@ -668,5 +673,4 @@ impl SiffIO {
 
         Ok(ret_tuple.into_bound(py))
     }
-
 }

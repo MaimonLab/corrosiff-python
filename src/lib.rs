@@ -87,5 +87,25 @@ fn corrosiff_python<'py>(_py: Python<'py>, m: &Bound<'py, PyModule>)
         Ok(())
     }
 
+    /// Scans a .siff file for just the first timestamp using the `corrosiff` library.
+    #[pyfn(m)]#[pyo3(name = "get_start_timestamp", signature = (file_path))]
+    fn get_start_timestamp<'py>(py : Python<'py>, file_path: &str) -> PyResult<u64> {
+        let start = corrosiff::scan_first_timestamp(&file_path)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e)) )?;
+        Ok(start)
+    }
+
+    /// Scans a .siff file for its start and end timestamps
+    /// using the `corrosiff` library.
+    #[pyfn(m)]#[pyo3(name = "get_start_and_end_timestamps", signature = (file_path))]
+    fn get_start_and_end_timestamps<'py>(
+        py: Python<'py>,
+        file_path: &str
+    ) -> PyResult<(u64, u64)> {
+        let (start, end) = corrosiff::scan_timestamps(&file_path)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e)) )?;
+        Ok((start, end))
+    }
+
     Ok(())
 }

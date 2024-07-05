@@ -9,7 +9,7 @@ files = [
     '/Users/stephen/Desktop/Data/imaging/2024-05/2024-05-27/SS02255_greenCamui_alpha/Fly1/PB_1.siff',
 ]
 
-def run_test_on_file(file : str, test : Callable, num_iters : int = 10)->np.ndarray:
+def run_test_on_file(file : str, test : Callable, num_iters : int = 10, num_rounds : int = 5)->np.ndarray:
     """
     Creates two siffreaders, one with the `corrosiff` backend
     and one with the `siffreadermodule` backend, and compares
@@ -17,7 +17,7 @@ def run_test_on_file(file : str, test : Callable, num_iters : int = 10)->np.ndar
     to take a single argument: the siffreader of interest.
 
     Returns a 2xN array of times, where N is the number of
-    iterations. The first row is the times for the rust
+    rounds. The first row is the times for the rust
     implementation, and the second row is the times for the
     cpp implementation.
     """
@@ -34,6 +34,7 @@ cpp_reader = SiffReader('{file}', backend='siffreadermodule')
         stmt = "test(rust_reader)",
         setup = setup,
         number = num_iters,
+        repeat = num_rounds
     )
 
     # Run the test on the cpp reader
@@ -41,7 +42,8 @@ cpp_reader = SiffReader('{file}', backend='siffreadermodule')
         stmt = "test(cpp_reader)",
         setup = setup,
         number = num_iters,
+        repeat = num_rounds
     )
 
     # Return the times
-    return np.array([rust_times,cpp_times])
+    return np.array([rust_times,cpp_times])/num_iters
