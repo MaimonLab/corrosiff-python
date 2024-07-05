@@ -44,7 +44,7 @@ def siffreaders(tmp_path_factory) -> Tuple['corrosiffpy.SiffIO']:
     
     tmp_dir = tmp_path_factory.mktemp("test_siff_files")
 
-    if 'DROPBOX_SECRET_TOKEN' in os.environ:
+    if 'DROPBOX_SECRET' in os.environ:
         download_files_from_dropbox(tmp_dir)
     else:
         # Copy local test files to the temporary directory
