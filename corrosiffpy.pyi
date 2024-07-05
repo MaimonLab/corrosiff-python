@@ -92,8 +92,7 @@ class SiffIO():
         Raises a `ValueError` if the frames do not have a consistent
         shape (e.g. multiple sized ROIs).
 
-        Example
-        -------
+        ## Example
 
         ```python
 
@@ -356,7 +355,7 @@ class SiffIO():
 
     def sum_roi(
         self,
-        mask : 'np.ndarray[Any, np.dtype[np.bool_]]',
+        mask : 'np.ndarray[Any, np.dtype[bool]]',
         *,
         frames : Optional[List[int]] = None,
         registration : Optional[Dict] = None,
@@ -372,7 +371,7 @@ class SiffIO():
 
         ## Arguments
 
-        * `mask` : np.ndarray[Any, np.dtype[np.bool_]]
+        * `mask` : np.ndarray[Any, np.dtype[bool]]
             A boolean mask of the same shape as the frames
             to be summed (if to be applied to all the frames).
             If it's a 3D mask, the slowest dimension is assumed
@@ -455,7 +454,7 @@ class SiffIO():
 
     def sum_rois(
         self,
-        masks : 'np.ndarray[Any, np.dtype[np.bool_]]',
+        masks : 'np.ndarray[Any, np.dtype[bool]]',
         *,
         frames : Optional[List[int]] = None,
         registration : Optional[Dict] = None,
@@ -470,7 +469,7 @@ class SiffIO():
 
         ## Arguments
 
-        * `masks` : np.ndarray[Any, np.dtype[np.bool_]]
+        * `masks` : np.ndarray[Any, np.dtype[bool]]
             Boolean masks. The mask dimension is the slowest
             dimension (the 0th axis) and the last two dimensions
             correspond to the y and x dimensions of the
@@ -560,7 +559,7 @@ class SiffIO():
 
     def sum_roi_flim(
         self,
-        mask : 'np.ndarray[Any, np.dtype[np.bool_]]',
+        mask : 'np.ndarray[Any, np.dtype[bool]]',
         params : Optional['FLIMParams'],
         frames : Optional[List[int]] = None,
         registration : Optional[Dict] = None,
@@ -594,7 +593,7 @@ class SiffIO():
 
         ## Arguments
 
-        * `mask` : np.ndarray[Any, np.dtype[np.bool_]]
+        * `mask` : np.ndarray[Any, np.dtype[bool]]
             A boolean mask of the same shape as the frames
             to be summed (if to be applied to all the frames).
             If it's a 3D mask, the slowest dimension is assumed
@@ -707,7 +706,7 @@ class SiffIO():
 
     def sum_rois_flim(
         self,
-        masks : 'np.ndarray[Any, np.dtype[np.bool_]]',
+        masks : 'np.ndarray[Any, np.dtype[bool]]',
         params : Optional['FLIMParams'],
         frames : Optional[List[int]] = None,
         registration : Optional[Dict] = None,
@@ -735,7 +734,7 @@ class SiffIO():
 
         ## Arguments
 
-        * `masks` : np.ndarray[Any, np.dtype[np.bool_]]
+        * `masks` : np.ndarray[Any, np.dtype[bool]]
             Boolean masks. The mask dimension is the slowest
             dimension (the 0th axis) and the last two dimensions
             correspond to the y and x dimensions of the
@@ -926,7 +925,7 @@ class SiffIO():
 
     def get_histogram_masked(
         self,
-        mask : 'np.ndarray[Any, np.dtype[np.bool_]]',
+        mask : 'np.ndarray[Any, np.dtype[bool]]',
         frames : Optional[List[int]] = None,
         registration : Optional[Dict] = None,
     )-> 'np.ndarray[Any, np.dtype[np.uint64]]':
@@ -936,7 +935,7 @@ class SiffIO():
 
         ## Arguments
 
-        * `mask` : np.ndarray[Any, np.dtype[np.bool_]]
+        * `mask` : np.ndarray[Any, np.dtype[bool]]
             A boolean mask of the same shape as the frames
             to be summed.
 
