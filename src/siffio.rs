@@ -1483,13 +1483,22 @@ impl SiffIO {
     /// even with many ROIs, so this gets much more efficient than repeated
     /// calls to `sum_roi` for each ROI.
     /// - `sum_roi` : The intensity-only version of this function.
-    #[pyo3(name = "sum_roi_flim", signature = (mask, params = None, frames = None, registration = None))]
+    #[pyo3(name = "sum_roi_flim",
+        signature = (
+            mask,
+            params = None,
+            frames = None,
+            flim_method = "empirical lifetime",
+            registration = None
+        )
+    )]
     pub fn sum_roi_flim_py<'py>(
         &self,
         py : Python<'py>,
         mask : &Bound<'py, PyAny>,
         params : Option<&Bound<'py,PyAny>>,
         frames : Option<Vec<u64>>,
+        flim_method : Option<&str>,
         registration : Option<HashMap<u64, (i32, i32)>>,
     ) -> PyResult<Bound<'py, PyTuple>>
     {
@@ -1504,7 +1513,7 @@ impl SiffIO {
         } 
 
         if PyArray4::<bool>::type_check(mask) {
-            return self.sum_rois_flim_py(py, mask, params, frames, registration)
+            return self.sum_rois_flim_py(py, mask, params, frames, flim_method, registration)
         }
 
         let frames = frames_default!(frames, self);
@@ -1518,37 +1527,93 @@ impl SiffIO {
             params.call_method1("convert_units", (old_units,))?;
         }
 
+        let flim_method = flim_method.unwrap_or("empirical lifetime");
+
         if PyArray2::<bool>::type_check(&mask) {
             let mask : PyReadonlyArray2<bool> = mask.extract()?;
             let mask = mask.as_array();
 
-            let (lifetime, intensity) = self.reader.sum_roi_flim_flat(&mask, &frames, registration.as_ref())
-                .map_err(_to_py_error)?;
+            let ret_tuple : Py<PyTuple>;
+            match flim_method {
+                "empirical lifetime" => {
+                    let (lifetime, intensity) = self.reader.sum_roi_flim_flat(&mask, &frames, registration.as_ref())
+                        .map_err(_to_py_error)?;
 
-            let lifetime = lifetime - offset;
+                    let lifetime = lifetime - offset;
 
-            let ret_tuple : Py<PyTuple> = (
-                lifetime.into_pyarray_bound(py),
-                intensity.into_pyarray_bound(py),
-                None::<PyArray3<f64>>,
-            ).into_py(py);
+                    ret_tuple = (
+                        lifetime.into_pyarray_bound(py),
+                        intensity.into_pyarray_bound(py),
+                        None::<PyArray3<f64>>,
+                    ).into_py(py);
+                },
+                "phasor" => {
+                    let (lifetime, intensity) = self.reader.sum_roi_phasor_flat(&mask, &frames, registration.as_ref())
+                        .map_err(_to_py_error)?;
+
+                    let histogram_length = self.reader.num_flim_bins().
+                    map_err(_to_py_error)?;
+    
+                    let frac_offset = 2.0_f64 * std::f64::consts::PI * offset/histogram_length as f64;
+    
+                    let lifetime = lifetime / Complex::new(frac_offset.cos(), frac_offset.sin());
+
+                    ret_tuple = (
+                        lifetime.into_pyarray_bound(py),
+                        intensity.into_pyarray_bound(py),
+                        None::<PyArray3<f64>>,
+                    ).into_py(py);
+                },
+                _ => {
+                    return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                        "Only 'empirical lifetime' is supported as a flim_method for now."
+                    ));
+                }
+            }
 
             return Ok(ret_tuple.into_bound(py))
         }
 
         let mask : PyReadonlyArray3<bool> = mask.extract()?;
         let mask = mask.as_array();
+        
+        let ret_tuple : Py<PyTuple>;
+            match flim_method {
+                "empirical lifetime" => {
+                    let (lifetime, intensity) = self.reader.sum_roi_flim_volume(&mask, &frames, registration.as_ref())
+                        .map_err(_to_py_error)?;
 
-        let (lifetime, intensity) = self.reader.sum_roi_flim_volume(&mask, &frames, registration.as_ref())
-            .map_err(_to_py_error)?;
+                    let lifetime = lifetime - offset;
 
-        let lifetime = lifetime - offset;
+                    ret_tuple = (
+                        lifetime.into_pyarray_bound(py),
+                        intensity.into_pyarray_bound(py),
+                        None::<PyArray3<f64>>,
+                    ).into_py(py);
+                },
+                "phasor" => {
+                    let (lifetime, intensity) = self.reader.sum_roi_phasor_volume(&mask, &frames, registration.as_ref())
+                        .map_err(_to_py_error)?;
 
-        let ret_tuple : Py<PyTuple> = (
-            lifetime.into_pyarray_bound(py),
-            intensity.into_pyarray_bound(py),
-            None::<PyArray3<f64>>,
-        ).into_py(py);
+                    let histogram_length = self.reader.num_flim_bins().
+                    map_err(_to_py_error)?;
+    
+                    let frac_offset = 2.0_f64 * std::f64::consts::PI * offset/histogram_length as f64;
+    
+                    let lifetime = lifetime / Complex::new(frac_offset.cos(), frac_offset.sin());
+
+                    ret_tuple = (
+                        lifetime.into_pyarray_bound(py),
+                        intensity.into_pyarray_bound(py),
+                        None::<PyArray3<f64>>,
+                    ).into_py(py);
+                },
+                _ => {
+                    return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                        "Invalid `flim_method` argument."
+                    ));
+                }
+            }
 
         Ok(ret_tuple.into_bound(py))
     }
@@ -1660,13 +1725,20 @@ impl SiffIO {
 
     /// - `sum_roi_flim` : Summing a single ROI mask.
     /// - `sum_rois` : The intensity-only version of this function.
-    #[pyo3(name = "sum_rois_flim", signature = (masks, params = None, frames = None, registration = None))]
+    #[pyo3(name = "sum_rois_flim", signature = (
+        masks,
+        params = None,
+        frames = None,
+        flim_method = "empirical lifetime",
+        registration = None
+    ))]
     pub fn sum_rois_flim_py<'py>(
         &self,
         py : Python<'py>,
         masks : &Bound<'py, PyAny>,
         params : Option<&Bound<'py,PyAny>>,
         frames : Option<Vec<u64>>,
+        flim_method : Option<&str>,
         registration : Option<HashMap<u64, (i32, i32)>>,
     ) -> PyResult<Bound<'py, PyTuple>>
     {
@@ -1689,40 +1761,100 @@ impl SiffIO {
             params.call_method1("convert_units", (old_units,))?;
         }
 
+        let flim_method = flim_method.unwrap_or("empirical lifetime");
+
         if PyArray3::<bool>::type_check(&masks) {
             let masks : PyReadonlyArray3<bool> = masks.extract()?;
             let masks = masks.as_array();
             
-            let (lifetime, intensity) = self.reader.sum_rois_flim_flat(
-                &masks, &frames, registration.as_ref()
-            ).map_err(_to_py_error)?;
+            match flim_method {
+                "empirical lifetime" => {
+                    let (lifetime, intensity) = self.reader.sum_rois_flim_flat(
+                        &masks, &frames, registration.as_ref()
+                    ).map_err(_to_py_error)?;
 
-            let lifetime = lifetime - offset;
+                    let lifetime = lifetime - offset;
 
-            let ret_tuple : Py<PyTuple> = (
-                lifetime.into_pyarray_bound(py).call_method0("transpose")?,
-                intensity.into_pyarray_bound(py).call_method0("transpose")?,
-                None::<PyArray3<f64>>,
-            ).into_py(py);
+                    let ret_tuple : Py<PyTuple> = (
+                        lifetime.into_pyarray_bound(py).call_method0("transpose")?,
+                        intensity.into_pyarray_bound(py).call_method0("transpose")?,
+                        None::<PyArray3<f64>>,
+                    ).into_py(py);
 
-            return Ok(ret_tuple.into_bound(py))
+                    return Ok(ret_tuple.into_bound(py))
+                },
+                "phasor" => {
+                    let (lifetime, intensity) = self.reader.sum_rois_phasor_flat(
+                        &masks, &frames, registration.as_ref()
+                    ).map_err(_to_py_error)?;
+
+                    let histogram_length = self.reader.num_flim_bins().
+                    map_err(_to_py_error)?;
+    
+                    let frac_offset = 2.0_f64 * std::f64::consts::PI * offset/histogram_length as f64;
+    
+                    let lifetime = lifetime / Complex::new(frac_offset.cos(), frac_offset.sin());
+
+                    let ret_tuple : Py<PyTuple> = (
+                        lifetime.into_pyarray_bound(py).call_method0("transpose")?,
+                        intensity.into_pyarray_bound(py).call_method0("transpose")?,
+                        None::<PyArray3<f64>>,
+                    ).into_py(py);
+
+                    return Ok(ret_tuple.into_bound(py))
+                },
+                _ => {
+                    return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                        "Invalid `flim_method` argument".to_string()
+                    ));
+                }
+            }
         }
         
         let masks : PyReadonlyArray4<bool> = masks.extract()?;
         let masks = masks.as_array();
 
-        let (lifetime, intensity) = self.reader.sum_rois_flim_volume(
-            &masks, &frames, registration.as_ref()
-        ).map_err(_to_py_error)?;
+        match flim_method {
+            "empirical lifetime" => {
+                let (lifetime, intensity) = self.reader.sum_rois_flim_volume(
+                    &masks, &frames, registration.as_ref()
+                ).map_err(_to_py_error)?;
 
-        let lifetime = lifetime - offset;
+                let lifetime = lifetime - offset;
 
-        let ret_tuple : Py<PyTuple> = (
-            lifetime.into_pyarray_bound(py).call_method0("transpose")?,
-            intensity.into_pyarray_bound(py).call_method0("transpose")?,
-            None::<PyArray3<f64>>,
-        ).into_py(py);
+                let ret_tuple : Py<PyTuple> = (
+                    lifetime.into_pyarray_bound(py).call_method0("transpose")?,
+                    intensity.into_pyarray_bound(py).call_method0("transpose")?,
+                    None::<PyArray3<f64>>,
+                ).into_py(py);
 
-        Ok(ret_tuple.into_bound(py))
+                return Ok(ret_tuple.into_bound(py))
+            },
+            "phasor" => {
+                let (lifetime, intensity) = self.reader.sum_rois_phasor_volume(
+                    &masks, &frames, registration.as_ref()
+                ).map_err(_to_py_error)?;
+
+                let histogram_length = self.reader.num_flim_bins().
+                map_err(_to_py_error)?;
+
+                let frac_offset = 2.0_f64 * std::f64::consts::PI * offset/histogram_length as f64;
+
+                let lifetime = lifetime / Complex::new(frac_offset.cos(), frac_offset.sin());
+
+                let ret_tuple : Py<PyTuple> = (
+                    lifetime.into_pyarray_bound(py).call_method0("transpose")?,
+                    intensity.into_pyarray_bound(py).call_method0("transpose")?,
+                    None::<PyArray3<f64>>,
+                ).into_py(py);
+
+                return Ok(ret_tuple.into_bound(py))
+            },
+            _ => {
+                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                    "Invalid `flim_method` argument".to_string()
+                ));
+            }
+        }
     }
 }

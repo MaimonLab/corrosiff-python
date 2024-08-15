@@ -10,7 +10,7 @@ Its primary tool is the `SiffIO` class, which wraps `corrosiff`'s
 decisions here made to remain consistent with the `C++`-based
 `siffreadermodule` extension module.
 """
-from typing import Any, Tuple, List, Dict, Optional
+from typing import Any, Tuple, List, Dict, Optional, Union
 
 import numpy as np
 
@@ -229,7 +229,11 @@ class SiffIO():
         confidence_metric : str = 'chi_sq',
         flim_method : str = 'empirical lifetime',
         registration : Optional[Dict] = None,
-    )->Tuple['np.ndarray[Any, np.dtype[np.float64]]', 'np.ndarray[Any, np.dtype[np.uint16]]', 'np.ndarray[Any, np.dtype[np.float64]]']:
+    ) -> Tuple[
+        Union['np.ndarray[Any, np.dtype[np.float64]]', 'np.ndarray[Any, np.dtype[np.complex128]]'],
+        'np.ndarray[Any, np.dtype[np.uint16]]',
+        'np.ndarray[Any, np.dtype[np.float64]]'
+        ]:
         """
         Returns a tuple of `(flim_map, intensity_map, confidence_map)`
         where flim_map is the empirical lifetime with the offset of
@@ -255,7 +259,7 @@ class SiffIO():
 
         * `flim_method` : str
             The method to use for the FLIM analysis. Can be 'empirical lifetime'
-            or 'phasor'. Currently only 'empirical lifetime' is implemented.
+            or 'phasor'. Currently only 'empirical lifetime' and 'phasor' are implemented.
 
         * `registration` : Dict
             A dictionary containing registration information
@@ -265,7 +269,8 @@ class SiffIO():
         ## Returns
 
         * `Tuple[np.ndarray[Any, np.dtype[np.float64]], np.ndarray[Any, np.dtype[np.uint16]], np.ndarray[Any, np.dtype[np.float64]]]`
-            A tuple of three numpy arrays containing the lifetime data (as float64),
+            A tuple of three numpy arrays containing the lifetime data (as float64 or complex128, depending on if it's
+            empirical lifetime or phasor data),
             the intensity data (as uint16), and the confidence data (as float64 or None).
 
         ## Example
@@ -567,9 +572,10 @@ class SiffIO():
         mask : 'np.ndarray[Any, np.dtype[bool]]',
         params : Optional['FLIMParams'],
         frames : Optional[List[int]] = None,
+        flim_method : str = 'empirical lifetime',
         registration : Optional[Dict] = None,
     )->Tuple[
-        'np.ndarray[Any, np.dtype[np.float64]]',
+        Union['np.ndarray[Any, np.dtype[np.float64]]', 'np.ndarray[Any, np.dtype[np.complex128]]'],
         'np.ndarray[Any, np.dtype[np.uint64]]', 
         Optional['np.ndarray[Any, np.dtype[np.float64]]']
     ]:
@@ -615,6 +621,10 @@ class SiffIO():
         * `frames` : Optional[List[int]]
             A list of frames to retrieve. If `None`, all frames
             will be retrieved.
+
+        * `flim_method` : str
+            The method to use for the FLIM analysis. Can be 'empirical lifetime'
+            or 'phasor'. Currently only 'empirical lifetime' and 'phasor' are implemented.
 
         * `registration` : Optional[Dict]
             A dictionary containing registration information
@@ -714,9 +724,10 @@ class SiffIO():
         masks : 'np.ndarray[Any, np.dtype[bool]]',
         params : Optional['FLIMParams'],
         frames : Optional[List[int]] = None,
+        flim_method : str = 'empirical lifetime',
         registration : Optional[Dict] = None,
     ) -> Tuple[
-        'np.ndarray[Any, np.dtype[np.float64]]',
+        Union['np.ndarray[Any, np.dtype[np.float64]]', 'np.ndarray[Any, np.dtype[np.complex128]]'],
         'np.ndarray[Any, np.dtype[np.uint64]]',
         Optional['np.ndarray[Any, np.dtype[np.float64]]']
     ]:
@@ -766,6 +777,11 @@ class SiffIO():
         * `frames` : Optional[List[int]]
             A list of frames to retrieve. If `None`, all frames
             will be retrieved.
+
+        * `flim_method` : str
+            The method to use for the FLIM analysis. Can be 'empirical lifetime'
+            or 'phasor'. Currently only 'empirical lifetime' and 'phasor' are implemented.
+
 
         * `registration` : Optional[Dict]
             A dictionary containing registration information
