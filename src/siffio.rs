@@ -4,6 +4,7 @@
 use numpy::{IntoPyArray, PyArray1, PyArray2, PyArray3, PyArray4,
     PyReadonlyArray2, PyReadonlyArray3, PyReadonlyArray4,
 };
+use num_complex::Complex;
 use pyo3::PyTypeCheck;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyTuple};
@@ -681,7 +682,11 @@ impl SiffIO {
     /// * `confidence_metric` : str
     ///     The metric to use for the confidence map. Can be 'chi_sq'
     ///     or 'p_value'. Currently not actually used!
-
+    /// 
+    /// * `flim_method` : str
+    ///    The method to use for the FLIM analysis. Can be 'empirical lifetime'
+    ///    or 'phasor'. Currently only 'empirical lifetime' is implemented. 
+    ///
     /// * `registration` : Dict
     ///     A dictionary containing registration information
     ///     (the keys correspond to the frame number, the values
@@ -714,6 +719,7 @@ impl SiffIO {
     ///         Irf(offset = 1.1, sigma = 0.2, units = 'nanoseconds'),
     ///     )
 
+    ///     # Empirical lifetime
     ///     flim_map, intensity_map, confidence_map = siffio.flim_map(test_params, list(range(1000)))
 
     ///     print(flim_map.shape, flim_map.dtype)
@@ -722,13 +728,23 @@ impl SiffIO {
     ///     assert intensity_map == frame_data
 
     ///     ```
-    #[pyo3(name = "flim_map", signature = (params = None, frames = None, confidence_metric = "chi_sq", registration = None))]
+    #[pyo3(
+        name = "flim_map",
+        signature = (
+            params = None,
+            frames = None,
+            confidence_metric = "chi_sq",
+            flim_method = "empirical lifetime",
+            registration = None
+        )
+    )]
     pub fn flim_map_py<'py>(
         &self,
         py : Python<'py>,
         params : Option<&Bound<'py,PyAny>>,
         frames : Option<Vec<u64>>,
         confidence_metric : Option<&str>,
+        flim_method : Option<&str>,
         registration : Option<HashMap<u64, (i32, i32)>>,
     ) -> PyResult<Bound<'py, PyTuple>>{
         let frames = frames_default!(frames, self);
@@ -744,16 +760,48 @@ impl SiffIO {
             None => {}
         }
 
-        let (lifetime, intensity) = self.reader.get_frames_flim(&frames, registration.as_ref())
-            .map_err(_to_py_error)?;
+        let ret_tuple : Py<PyTuple>;
+        let flim_method = flim_method.unwrap_or("empirical lifetime");
 
-        let lifetime = lifetime - offset;
+        match flim_method { 
+            "empirical lifetime" => {
+                let (lifetime, intensity) = self.reader.get_frames_flim(&frames, registration.as_ref())
+                    .map_err(_to_py_error)?;
 
-        let ret_tuple : Py<PyTuple> = (
-                lifetime.into_pyarray_bound(py),
-                intensity.into_pyarray_bound(py),
-                None::<PyArray3<f64>>,
-            ).into_py(py);
+                let lifetime = lifetime - offset;
+
+                ret_tuple = (
+                    lifetime.into_pyarray_bound(py),
+                    intensity.into_pyarray_bound(py),
+                    None::<PyArray3<f64>>,
+                ).into_py(py);
+            },
+            "phasor" => {
+                let (lifetime, intensity) = self.reader.get_frames_phasor(
+                    &frames, registration.as_ref()
+                ).map_err(_to_py_error)?;
+
+                let histogram_length = self.reader.num_flim_bins().
+                map_err(_to_py_error)?;
+
+                let frac_offset = 2.0_f64 * std::f64::consts::PI * offset/histogram_length as f64;
+
+                let lifetime = lifetime * Complex::new(frac_offset.cos(), frac_offset.sin());
+                
+                ret_tuple = (
+                    lifetime.into_pyarray_bound(py),
+                    intensity.into_pyarray_bound(py),
+                    None::<PyArray3<f64>>,
+                ).into_py(py);
+            },
+            _ => {
+                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                    format!("Invalid FLIM method {}. Must be one of \
+                    [`empirical lifetime`, `phasor`]" , flim_method
+                    )
+                ));
+            }
+        }
 
         Ok(ret_tuple.into_bound(py))
     }
@@ -1008,14 +1056,24 @@ impl SiffIO {
         registration : Option<HashMap<u64, (i32, i32)>>
     ) -> PyResult<Bound<'py, PyArray2<u64>>> {
 
-        if !PyArray2::<bool>::type_check(&mask) {
+        if !PyArray2::<bool>::type_check(&mask) 
+        && !PyArray3::<bool>::type_check(&mask){
             return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                "Mask must be a 2d numpy array (for now). I plan to extend this\
-                 to 3d masks in the future."
+                "Mask must be a 2d or 3d numpy array (for now)."
             ));
         }
 
         let frames = frames_default!(frames, self);
+        if PyArray3::<bool>::type_check(&mask) {
+            let mask : PyReadonlyArray3<bool> = mask.extract()?;
+            let mask = mask.as_array();
+            return Ok(
+                self.reader
+                .get_histogram_mask_volume(&frames, &mask, registration.as_ref())
+                .map_err(_to_py_error)?
+                .into_pyarray_bound(py)
+            )
+        }
 
         let mask : PyReadonlyArray2<bool> = mask.extract()?;
         let mask = mask.as_array();

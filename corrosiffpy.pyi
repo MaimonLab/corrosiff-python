@@ -227,6 +227,7 @@ class SiffIO():
         params : Optional['FLIMParams'],
         frames : Optional[List[int]],
         confidence_metric : str = 'chi_sq',
+        flim_method : str = 'empirical lifetime',
         registration : Optional[Dict] = None,
     )->Tuple['np.ndarray[Any, np.dtype[np.float64]]', 'np.ndarray[Any, np.dtype[np.uint16]]', 'np.ndarray[Any, np.dtype[np.float64]]']:
         """
@@ -251,6 +252,10 @@ class SiffIO():
         * `confidence_metric` : str
             The metric to use for the confidence map. Can be 'chi_sq'
             or 'p_value'. Currently not actually used!
+
+        * `flim_method` : str
+            The method to use for the FLIM analysis. Can be 'empirical lifetime'
+            or 'phasor'. Currently only 'empirical lifetime' is implemented.
 
         * `registration` : Dict
             A dictionary containing registration information
