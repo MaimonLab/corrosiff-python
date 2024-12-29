@@ -5,6 +5,7 @@ use numpy::{IntoPyArray, PyArray1, PyArray2, PyArray3, PyArray4,
     PyReadonlyArray2, PyReadonlyArray3, PyReadonlyArray4,
 };
 use num_complex::Complex;
+use pyo3::types::PyNone;
 use pyo3::PyTypeCheck;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyTuple};
@@ -366,7 +367,7 @@ impl SiffIO {
             self.reader
             .get_experiment_timestamps(&frames)
             .map_err(_to_py_error)?
-            .into_pyarray_bound(py)
+            .into_pyarray(py)
         )
     }
 
@@ -416,7 +417,7 @@ impl SiffIO {
             self.reader
             .get_epoch_timestamps_laser(&frames)
             .map_err(_to_py_error)?
-            .into_pyarray_bound(py)
+            .into_pyarray(py)
         )
     }
 
@@ -472,7 +473,7 @@ impl SiffIO {
             self.reader
             .get_epoch_timestamps_system(&frames)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{:?}", e)))?
-            .into_pyarray_bound(py)
+            .into_pyarray(py)
         )
     }
 
@@ -528,7 +529,7 @@ impl SiffIO {
             self.reader
             .get_epoch_timestamps_both(&frames)
             .map_err(_to_py_error)?
-            .into_pyarray_bound(py)
+            .into_pyarray(py)
         )
     }
 
@@ -657,7 +658,7 @@ impl SiffIO {
             self.reader
             .get_frames_intensity(&frames, registration.as_ref())
             .map_err(_to_py_error)?
-            .into_pyarray_bound(py)
+            .into_pyarray(py)
         )
     }
 
@@ -771,10 +772,10 @@ impl SiffIO {
                 let lifetime = lifetime - offset;
 
                 ret_tuple = (
-                    lifetime.into_pyarray_bound(py),
-                    intensity.into_pyarray_bound(py),
-                    None::<PyArray3<f64>>,
-                ).into_py(py);
+                    lifetime.into_pyarray(py),
+                    intensity.into_pyarray(py),
+                    None::<Bound<'py, PyArray3<f64>>>,
+                ).into_py(py)
             },
             "phasor" => {
                 let (lifetime, intensity) = self.reader.get_frames_phasor(
@@ -789,10 +790,10 @@ impl SiffIO {
                 let lifetime = lifetime * Complex::new(frac_offset.cos(), frac_offset.sin());
                 
                 ret_tuple = (
-                    lifetime.into_pyarray_bound(py),
-                    intensity.into_pyarray_bound(py),
-                    None::<PyArray3<f64>>,
-                ).into_py(py);
+                    lifetime.into_pyarray(py),
+                    intensity.into_pyarray(py),
+                    None::<Bound<'py, PyArray3<f64>>>,
+                ).into_py(py)
             },
             _ => {
                 return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
@@ -867,7 +868,7 @@ impl SiffIO {
             self.reader
             .get_frames_tau_d(&frames, registration.as_ref())
             .map_err(_to_py_error)?
-            .into_pyarray_bound(py)
+            .into_pyarray(py)
         )
     }
 
@@ -938,10 +939,10 @@ impl SiffIO {
             self.reader
             .get_histogram(&frames)
             .map_err(_to_py_error)?
-            .into_pyarray_bound(py)
+            .into_pyarray(py)
             .call_method("sum", (), Some(&kwarg_dict))
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{:?}", e)))?
-            //.into_pyarray_bound(py)
+            //.into_pyarray(py)
         )
     }
 
@@ -990,7 +991,7 @@ impl SiffIO {
             self.reader
             .get_histogram(&frames)
             .map_err(_to_py_error)?
-            .into_pyarray_bound(py)
+            .into_pyarray(py)
         )
     }
 
@@ -1071,7 +1072,7 @@ impl SiffIO {
                 self.reader
                 .get_histogram_mask_volume(&frames, &mask, registration.as_ref())
                 .map_err(_to_py_error)?
-                .into_pyarray_bound(py)
+                .into_pyarray(py)
             )
         }
 
@@ -1082,7 +1083,7 @@ impl SiffIO {
             self.reader
             .get_histogram_mask(&frames, &mask, registration.as_ref())
             .map_err(_to_py_error)?
-            .into_pyarray_bound(py)
+            .into_pyarray(py)
         )
     }
 
@@ -1205,7 +1206,7 @@ impl SiffIO {
             return Ok(
                 self.reader.sum_roi_flat(&mask, &frames, registration.as_ref())
                 .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{:?}", e)))?
-                .into_pyarray_bound(py).into_any()
+                .into_pyarray(py).into_any()
             )
         }
 
@@ -1214,7 +1215,7 @@ impl SiffIO {
         Ok(
             self.reader.sum_roi_volume(&mask, &frames, registration.as_ref())
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{:?}", e)))?
-            .into_pyarray_bound(py).into_any()
+            .into_pyarray(py).into_any()
         )
 
     }
@@ -1338,7 +1339,7 @@ impl SiffIO {
             return Ok(
                 self.reader.sum_rois_flat(&masks, &frames, registration.as_ref())
                 .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{:?}", e)))?
-                .into_pyarray_bound(py).call_method0("transpose")?.into_any()
+                .into_pyarray(py).call_method0("transpose")?.into_any()
             )
         }
 
@@ -1347,7 +1348,7 @@ impl SiffIO {
         Ok(
             self.reader.sum_rois_volume(&masks, &frames, registration.as_ref())
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{:?}", e)))?
-            .into_pyarray_bound(py).call_method0("transpose")?.into_any()
+            .into_pyarray(py).call_method0("transpose")?.into_any()
         )
     }
 
@@ -1542,9 +1543,9 @@ impl SiffIO {
                     let lifetime = lifetime - offset;
 
                     ret_tuple = (
-                        lifetime.into_pyarray_bound(py),
-                        intensity.into_pyarray_bound(py),
-                        None::<PyArray3<f64>>,
+                        lifetime.into_pyarray(py),
+                        intensity.into_pyarray(py),
+                        None::<Bound<'py, PyArray3<f64>>>,
                     ).into_py(py);
                 },
                 "phasor" => {
@@ -1559,9 +1560,9 @@ impl SiffIO {
                     let lifetime = lifetime / Complex::new(frac_offset.cos(), frac_offset.sin());
 
                     ret_tuple = (
-                        lifetime.into_pyarray_bound(py),
-                        intensity.into_pyarray_bound(py),
-                        None::<PyArray3<f64>>,
+                        lifetime.into_pyarray(py),
+                        intensity.into_pyarray(py),
+                        None::<Bound<'py, PyArray3<f64>>>,
                     ).into_py(py);
                 },
                 _ => {
@@ -1586,9 +1587,9 @@ impl SiffIO {
                     let lifetime = lifetime - offset;
 
                     ret_tuple = (
-                        lifetime.into_pyarray_bound(py),
-                        intensity.into_pyarray_bound(py),
-                        None::<PyArray3<f64>>,
+                        lifetime.into_pyarray(py),
+                        intensity.into_pyarray(py),
+                        None::<Bound<'py, PyArray3<f64>>>,
                     ).into_py(py);
                 },
                 "phasor" => {
@@ -1603,9 +1604,9 @@ impl SiffIO {
                     let lifetime = lifetime / Complex::new(frac_offset.cos(), frac_offset.sin());
 
                     ret_tuple = (
-                        lifetime.into_pyarray_bound(py),
-                        intensity.into_pyarray_bound(py),
-                        None::<PyArray3<f64>>,
+                        lifetime.into_pyarray(py),
+                        intensity.into_pyarray(py),
+                        None::<Bound<'py, PyArray3<f64>>>,
                     ).into_py(py);
                 },
                 _ => {
@@ -1776,9 +1777,9 @@ impl SiffIO {
                     let lifetime = lifetime - offset;
 
                     let ret_tuple : Py<PyTuple> = (
-                        lifetime.into_pyarray_bound(py).call_method0("transpose")?,
-                        intensity.into_pyarray_bound(py).call_method0("transpose")?,
-                        None::<PyArray3<f64>>,
+                        lifetime.into_pyarray(py).call_method0("transpose")?,
+                        intensity.into_pyarray(py).call_method0("transpose")?,
+                        None::<Bound<'py, PyArray3<f64>>>,
                     ).into_py(py);
 
                     return Ok(ret_tuple.into_bound(py))
@@ -1796,9 +1797,9 @@ impl SiffIO {
                     let lifetime = lifetime / Complex::new(frac_offset.cos(), frac_offset.sin());
 
                     let ret_tuple : Py<PyTuple> = (
-                        lifetime.into_pyarray_bound(py).call_method0("transpose")?,
-                        intensity.into_pyarray_bound(py).call_method0("transpose")?,
-                        None::<PyArray3<f64>>,
+                        lifetime.into_pyarray(py).call_method0("transpose")?,
+                        intensity.into_pyarray(py).call_method0("transpose")?,
+                        None::<Bound<'py, PyArray3<f64>>>,
                     ).into_py(py);
 
                     return Ok(ret_tuple.into_bound(py))
@@ -1823,9 +1824,9 @@ impl SiffIO {
                 let lifetime = lifetime - offset;
 
                 let ret_tuple : Py<PyTuple> = (
-                    lifetime.into_pyarray_bound(py).call_method0("transpose")?,
-                    intensity.into_pyarray_bound(py).call_method0("transpose")?,
-                    None::<PyArray3<f64>>,
+                    lifetime.into_pyarray(py).call_method0("transpose")?,
+                    intensity.into_pyarray(py).call_method0("transpose")?,
+                    None::<Bound<'py, PyArray3<f64>>>,
                 ).into_py(py);
 
                 return Ok(ret_tuple.into_bound(py))
@@ -1843,9 +1844,9 @@ impl SiffIO {
                 let lifetime = lifetime / Complex::new(frac_offset.cos(), frac_offset.sin());
 
                 let ret_tuple : Py<PyTuple> = (
-                    lifetime.into_pyarray_bound(py).call_method0("transpose")?,
-                    intensity.into_pyarray_bound(py).call_method0("transpose")?,
-                    None::<PyArray3<f64>>,
+                    lifetime.into_pyarray(py).call_method0("transpose")?,
+                    intensity.into_pyarray(py).call_method0("transpose")?,
+                    None::<Bound<'py, PyArray3<f64>>>,
                 ).into_py(py);
 
                 return Ok(ret_tuple.into_bound(py))
