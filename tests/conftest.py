@@ -5,11 +5,26 @@ import os
 
 import corrosiffpy
 
-LOCAL_TEST_FILES = [
-    '/Users/stephen/Desktop/Data/imaging/2024-04/2024-04-17/21Dhh_GCaFLITS/Fly1/Flashes_1.siff',
-    '/Users/stephen/Desktop/Data/imaging/2024-05/2024-05-27/R60D05_TqCaFLITS/Fly1/EBAgain_1.siff',
-    '/Users/stephen/Desktop/Data/imaging/2024-05/2024-05-27/SS02255_greenCamui_alpha/Fly1/PB_1.siff',
-]
+# for playing around on my computer and not dealing with dropbox stuff
+
+# get the path to the current conftest.py file
+# and then get the path to the `data` directory
+
+def local_files():
+    """
+    Fixture to provide a list of all files in the `data` directory.
+    """
+    data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+    
+    files = []
+    for root, _, filenames in os.walk(data_dir):
+        for filename in filenames:
+            if Path(filename).suffix == ".siff":
+                files.append(os.path.join(root, filename))
+    
+    return files
+
+LOCAL_TEST_FILES = local_files()
 
 def download_files_from_dropbox(local_path : Path):
     """
@@ -25,7 +40,11 @@ def download_files_from_dropbox(local_path : Path):
     REFRESH_TOKEN = os.environ['DROPBOX_REFRESH_TOKEN']
     SHARED_LINK = os.environ['DROPBOX_SHARED_LINK']
 
-    dbx = Dropbox(app_key= DROPBOX_APP_KEY, app_secret=DROPBOX_SECRET_TOKEN, oauth2_refresh_token=REFRESH_TOKEN)
+    dbx = Dropbox(
+        app_key= DROPBOX_APP_KEY,
+        app_secret=DROPBOX_SECRET_TOKEN,
+        oauth2_refresh_token=REFRESH_TOKEN,
+    )
 
     dbx.check_and_refresh_access_token()
     link = dropbox.files.SharedLink(url=SHARED_LINK)

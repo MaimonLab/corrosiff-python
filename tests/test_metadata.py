@@ -7,8 +7,8 @@ def test_metadata(siffreaders):
         siffreader.get_epoch_timestamps_system()
         siffreader.get_epoch_both()
 
-    assert (
-        corrosiffpy.get_start_timestamp(siffreader.filepath)
-        ==
-        corrosiffpy.get_start_and_end_timestamps(siffreader.filepath)[0]
-    )
+        assert (
+            corrosiffpy.get_start_timestamp(siffreader.filename)
+            ==
+            corrosiffpy.get_start_and_end_timestamps(siffreader.filename)[0]
+        )

@@ -12,6 +12,8 @@
 *.DS_Store
 .DS_Store
 
+tests/data/
+
 # Distribution / packaging
 bin/
 build/
