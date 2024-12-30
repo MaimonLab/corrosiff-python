@@ -47,9 +47,9 @@ def download_files_from_dropbox(local_path : Path):
     )
 
     dbx.check_and_refresh_access_token()
-    # link = dropbox.files.SharedLink(url=SHARED_LINK)
+    link = dropbox.files.SharedLink(url=SHARED_LINK)
 
-    link = dbx.sharing_get_shared_link_metadata(SHARED_LINK)
+    # link = dbx.sharing_get_shared_link_metadata(SHARED_LINK)
 
     for x in dbx.files_list_folder('', shared_link=link).entries:
         meta, response = dbx.sharing_get_shared_link_file(link.url, path = f'/{x.name}')
