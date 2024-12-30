@@ -121,17 +121,37 @@ files are very large), and return `numpy` arrays.
 Testing
 ----------
 
-Testing in this module, right now, is intended mostly to test that
-the `C++` and `Rust` implementations agree on all files. As such
-the tests are all built around loading the same file with
+There are two classes of tests: internal consistency, and consistency
+with the `C++` implementation.
+
+To test that different methods (e.g. separate mask function calls vs.
+all-together versions) return the same results, the core tests suite
+is implemented purely using the `corrosiff-python` library with no
+comparisons or calls to `siffpy`. These tests can be run with `pytest`
+from the main repository directory, and testing across various
+`Python` versions can be run with `tox`
+
+```
+pytest tests
+```
+or
+
+```
+tox
+```
+
+It is these internal consistency tests that are also run by the 
+continuous integration tools that `GitHub` will run on new version uploads.
+
+Compatibility tests are all built around loading the same file with
 `corrosiffpy` and `siffreadermodule` and ensuring they return the same
 results. The benchmarks are concentrated around comparing how each
 implementation differs in terms of speed when calling exactly the same function.
 
-Tests can be run with `pytest`. From the main repository directory:
+These tests can be run with `pytest`. From the main repository directory:
 
 ```
-pytest compatibility_tests
+pytest compatibility
 ```
 
 To test new features in `corrosiff`, use the `corrosiff` test suite in `Rust`. As
