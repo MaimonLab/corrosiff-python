@@ -5,7 +5,6 @@ use numpy::{IntoPyArray, PyArray1, PyArray2, PyArray3, PyArray4,
     PyReadonlyArray2, PyReadonlyArray3, PyReadonlyArray4,
 };
 use num_complex::Complex;
-use pyo3::types::PyNone;
 use pyo3::PyTypeCheck;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyList, PyTuple};
@@ -166,7 +165,7 @@ impl SiffIO {
     #[pyo3(name = "get_file_header")]
     pub fn get_file_header_py<'py>(&self, py : Python<'py>) -> PyResult<Bound<'py, PyDict>> {
 
-        let ret_dict = PyDict::new_bound(py);
+        let ret_dict = PyDict::new(py);
 
         ret_dict.set_item("Filename", self.reader.filename())?;
         ret_dict.set_item("BigTiff", self.reader.is_bigtiff())?;
@@ -222,13 +221,12 @@ impl SiffIO {
     pub fn frame_shape<'py>(&self, py : Python<'py>)-> PyResult<Bound<'py, PyTuple>> {
         self.reader.image_dims().map(
             |x| {
-                PyTuple::new_bound(py, vec![x.to_tuple().0, x.to_tuple().1])
-            }).map_or(
-                Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                    "File frames do not have a consistent shape"
-                )),
-                |x| Ok(x)
-            )
+                PyTuple::new(py, vec![x.to_tuple().0, x.to_tuple().1])
+        }).unwrap_or(
+            Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "File frames do not have a consistent shape"
+            ))
+        )
     }
 
 
@@ -293,10 +291,10 @@ impl SiffIO {
         let metadatas = self.reader.get_frame_metadata(&frames)
             .map_err(_to_py_error)?;
         
-        let ret_list = PyList::empty_bound(py);
+        let ret_list = PyList::empty(py);
 
         for metadata in metadatas {
-            let py_dict = PyDict::new_bound(py);
+            let py_dict = PyDict::new(py);
             // Ugly and brute force
             py_dict.set_item("width", metadata.width)?;
             py_dict.set_item("height", metadata.height)?;
@@ -571,25 +569,26 @@ impl SiffIO {
     pub fn get_appended_text_py<'py>(&self, py : Python<'py>, frames : Option<Vec<u64>>)
     -> PyResult<Bound<'py, PyList>> {
         let frames = frames_default!(frames, self);
-        let ret_list = PyList::empty_bound(py);
+        let ret_list = PyList::empty(py);
         self.reader
         .get_appended_text(&frames)
         .iter().for_each(|(frame, text, option_timestamp)| {
             match option_timestamp {
                 Some(timestamp) => {
-                    let tuple : Py<PyTuple> = (
-                        frame.into_py(py),
-                        text.into_py(py),
-                        timestamp.into_py(py),
-                    ).into_py(py);
+                    // infallible, so unwrapping... bad style!
+                    let tuple = (
+                        frame.into_pyobject(py).unwrap(),
+                        text.into_pyobject(py).unwrap(),
+                        timestamp.into_pyobject(py).unwrap(),
+                    ).into_pyobject(py).unwrap();
                     ret_list.append(tuple).unwrap();
                 
                 },
                 None => {
-                    let tuple : Py<PyTuple> = (
-                        frame.into_py(py),
-                        text.into_py(py),
-                    ).into_py(py);
+                    let tuple = (
+                        frame.into_pyobject(py).unwrap(),
+                        text.into_pyobject(py).unwrap(),
+                    ).into_pyobject(py).unwrap();
                     ret_list.append(tuple).unwrap();
                 }
             }
@@ -761,7 +760,7 @@ impl SiffIO {
             None => {}
         }
 
-        let ret_tuple : Py<PyTuple>;
+        let ret_tuple;
         let flim_method = flim_method.unwrap_or("empirical lifetime");
 
         match flim_method { 
@@ -775,7 +774,7 @@ impl SiffIO {
                     lifetime.into_pyarray(py),
                     intensity.into_pyarray(py),
                     None::<Bound<'py, PyArray3<f64>>>,
-                ).into_py(py)
+                ).into_pyobject(py).unwrap();
             },
             "phasor" => {
                 let (lifetime, intensity) = self.reader.get_frames_phasor(
@@ -793,7 +792,7 @@ impl SiffIO {
                     lifetime.into_pyarray(py),
                     intensity.into_pyarray(py),
                     None::<Bound<'py, PyArray3<f64>>>,
-                ).into_py(py)
+                ).into_pyobject(py).unwrap();
             },
             _ => {
                 return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
@@ -804,7 +803,7 @@ impl SiffIO {
             }
         }
 
-        Ok(ret_tuple.into_bound(py))
+        Ok(ret_tuple)
     }
 
     /// Returns a full-dimensioned array:
@@ -933,7 +932,7 @@ impl SiffIO {
     -> PyResult<Bound<'py, PyAny>> {
         let frames = frames_default!(frames, self);
 
-        let kwarg_dict = PyDict::new_bound(py);
+        let kwarg_dict = PyDict::new(py);
         kwarg_dict.set_item("axis", 0)?;
         Ok(
             self.reader
@@ -942,7 +941,6 @@ impl SiffIO {
             .into_pyarray(py)
             .call_method("sum", (), Some(&kwarg_dict))
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!("{:?}", e)))?
-            //.into_pyarray(py)
         )
     }
 
@@ -1534,7 +1532,7 @@ impl SiffIO {
             let mask : PyReadonlyArray2<bool> = mask.extract()?;
             let mask = mask.as_array();
 
-            let ret_tuple : Py<PyTuple>;
+            let ret_tuple;
             match flim_method {
                 "empirical lifetime" => {
                     let (lifetime, intensity) = self.reader.sum_roi_flim_flat(&mask, &frames, registration.as_ref())
@@ -1546,7 +1544,7 @@ impl SiffIO {
                         lifetime.into_pyarray(py),
                         intensity.into_pyarray(py),
                         None::<Bound<'py, PyArray3<f64>>>,
-                    ).into_py(py);
+                    ).into_pyobject(py)?;
                 },
                 "phasor" => {
                     let (lifetime, intensity) = self.reader.sum_roi_phasor_flat(&mask, &frames, registration.as_ref())
@@ -1563,7 +1561,7 @@ impl SiffIO {
                         lifetime.into_pyarray(py),
                         intensity.into_pyarray(py),
                         None::<Bound<'py, PyArray3<f64>>>,
-                    ).into_py(py);
+                    ).into_pyobject(py)?;
                 },
                 _ => {
                     return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
@@ -1572,13 +1570,13 @@ impl SiffIO {
                 }
             }
 
-            return Ok(ret_tuple.into_bound(py))
+            return Ok(ret_tuple)
         }
 
         let mask : PyReadonlyArray3<bool> = mask.extract()?;
         let mask = mask.as_array();
         
-        let ret_tuple : Py<PyTuple>;
+        let ret_tuple;
             match flim_method {
                 "empirical lifetime" => {
                     let (lifetime, intensity) = self.reader.sum_roi_flim_volume(&mask, &frames, registration.as_ref())
@@ -1590,7 +1588,7 @@ impl SiffIO {
                         lifetime.into_pyarray(py),
                         intensity.into_pyarray(py),
                         None::<Bound<'py, PyArray3<f64>>>,
-                    ).into_py(py);
+                    ).into_pyobject(py)?;
                 },
                 "phasor" => {
                     let (lifetime, intensity) = self.reader.sum_roi_phasor_volume(&mask, &frames, registration.as_ref())
@@ -1607,7 +1605,7 @@ impl SiffIO {
                         lifetime.into_pyarray(py),
                         intensity.into_pyarray(py),
                         None::<Bound<'py, PyArray3<f64>>>,
-                    ).into_py(py);
+                    ).into_pyobject(py)?;
                 },
                 _ => {
                     return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
@@ -1615,8 +1613,8 @@ impl SiffIO {
                     ));
                 }
             }
-
-        Ok(ret_tuple.into_bound(py))
+        
+        Ok(ret_tuple)
     }
 
     /// Masks may have 2 or 3 dimensions each, (i.e.
@@ -1776,13 +1774,13 @@ impl SiffIO {
 
                     let lifetime = lifetime - offset;
 
-                    let ret_tuple : Py<PyTuple> = (
+                    let ret_tuple = (
                         lifetime.into_pyarray(py).call_method0("transpose")?,
                         intensity.into_pyarray(py).call_method0("transpose")?,
                         None::<Bound<'py, PyArray3<f64>>>,
-                    ).into_py(py);
+                    ).into_pyobject(py)?;
 
-                    return Ok(ret_tuple.into_bound(py))
+                    return Ok(ret_tuple)
                 },
                 "phasor" => {
                     let (lifetime, intensity) = self.reader.sum_rois_phasor_flat(
@@ -1796,13 +1794,13 @@ impl SiffIO {
     
                     let lifetime = lifetime / Complex::new(frac_offset.cos(), frac_offset.sin());
 
-                    let ret_tuple : Py<PyTuple> = (
+                    let ret_tuple = (
                         lifetime.into_pyarray(py).call_method0("transpose")?,
                         intensity.into_pyarray(py).call_method0("transpose")?,
                         None::<Bound<'py, PyArray3<f64>>>,
-                    ).into_py(py);
+                    ).into_pyobject(py)?;
 
-                    return Ok(ret_tuple.into_bound(py))
+                    return Ok(ret_tuple)
                 },
                 _ => {
                     return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
@@ -1823,13 +1821,13 @@ impl SiffIO {
 
                 let lifetime = lifetime - offset;
 
-                let ret_tuple : Py<PyTuple> = (
+                let ret_tuple = (
                     lifetime.into_pyarray(py).call_method0("transpose")?,
                     intensity.into_pyarray(py).call_method0("transpose")?,
                     None::<Bound<'py, PyArray3<f64>>>,
-                ).into_py(py);
+                ).into_pyobject(py)?;
 
-                return Ok(ret_tuple.into_bound(py))
+                return Ok(ret_tuple)
             },
             "phasor" => {
                 let (lifetime, intensity) = self.reader.sum_rois_phasor_volume(
@@ -1843,13 +1841,13 @@ impl SiffIO {
 
                 let lifetime = lifetime / Complex::new(frac_offset.cos(), frac_offset.sin());
 
-                let ret_tuple : Py<PyTuple> = (
+                let ret_tuple = (
                     lifetime.into_pyarray(py).call_method0("transpose")?,
                     intensity.into_pyarray(py).call_method0("transpose")?,
                     None::<Bound<'py, PyArray3<f64>>>,
-                ).into_py(py);
+                ).into_pyobject(py)?;
 
-                return Ok(ret_tuple.into_bound(py))
+                return Ok(ret_tuple)
             },
             _ => {
                 return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(

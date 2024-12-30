@@ -53,7 +53,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "corrosiff"
 version = "0.1.0"
-source = "git+https://github.com/MaimonLab/Corrosiff.git?branch=dev#c040fa2bafc103ac188ef065aa68a7377b440021"
+source = "git+https://github.com/MaimonLab/Corrosiff.git?branch=dev#1b36bbb00168b5e31170dd1f3f6dd419f0ce7939"
 dependencies = [
  "binrw",
  "bytemuck",
