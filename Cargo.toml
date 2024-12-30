@@ -13,4 +13,4 @@ num-complex = "*"
 
 [lib]
 name = "corrosiffpy"
-crate_type = ["cdylib"]
+crate-type = ["cdylib"]
