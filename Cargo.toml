@@ -7,7 +7,7 @@ rust-version = "1.66.0"
 [dependencies]
 corrosiff = { git = "https://github.com/MaimonLab/Corrosiff.git" , branch = "dev"}
 # corrosiff = {path = "../corrosiff"}
-numpy = ">=0.18"
+numpy = ">=0.23"
 pyo3 = { version = ">=0.23", features = ["extension-module"] }
 num-complex = "*"
 
