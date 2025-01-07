@@ -38,7 +38,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: 3.x
+          python-version: <3.13 # for now due to PyO3 gil issue...
+          # python-version: 3.x
           # python-version: ${{ matrix.python-version }}
       - name: Build wheels
         uses: PyO3/maturin-action@v1
@@ -113,7 +114,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: 3.x
+          python-version: <3.13 # for now due to PyO3 gil issue...
+          # python-version: 3.x
           # python-version: ${{ matrix.python-version }}
       - name: Build wheels
         uses: PyO3/maturin-action@v1
@@ -184,6 +186,10 @@ jobs:
         with:
           name: wheels-windows-${{ matrix.platform.target }}-${{ strategy.job-index }}
           path: dist
+      - name: Set Swap Space
+        uses: pierotofy/set-swap-space@master
+        with:
+          swap-size-gb: 20
       - name: pytest
         if: ${{ !startsWith(matrix.platform.target, 'aarch64') }}
         shell: bash
@@ -207,9 +213,15 @@ jobs:
         platform:
           - runner: macos-13
             target: x86_64
-          - runner: macos-13
+          # - runner: macos-13
+            # target: aarch64
+          - runner: macos-14
             target: aarch64
           - runner: macos-14
+            target: x86_64
+          - runner: macos-15
+            target: x86_64
+          - runner: macos-15
             target: aarch64
     steps:
       - uses: actions/checkout@v4
