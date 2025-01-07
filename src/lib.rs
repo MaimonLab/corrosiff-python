@@ -56,8 +56,8 @@ fn corrosiff_python<'py>(_py: Python<'py>, m: &Bound<'py, PyModule>)
     /// ```
     #[pyfn(m)]
     #[pyo3(name = "open_file")]
-    fn open_file_py<'py>(py : Python<'py>, file_path: &str) ->
-        PyResult<Bound<'py, SiffIO>> {
+    fn open_file_py<'_py>(py : Python<'_py>, file_path: &str) ->
+        PyResult<Bound<'_py, SiffIO>> {
 
         let reader = corrosiff::open_siff(file_path).map_err(|e| 
             PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e))
@@ -71,8 +71,8 @@ fn corrosiff_python<'py>(_py: Python<'py>, m: &Bound<'py, PyModule>)
         name = "siff_to_tiff",
         signature = (sourcepath, savepath = None, mode = "ScanImage")
     )]
-    fn siff_to_tiff_py<'py>(
-        py : Python<'py>,
+    fn siff_to_tiff_py<'_py>(
+        py : Python<'_py>,
         sourcepath : &str,
         savepath : Option<&str>,
         mode : Option<&str>,
@@ -89,7 +89,7 @@ fn corrosiff_python<'py>(_py: Python<'py>, m: &Bound<'py, PyModule>)
 
     /// Scans a .siff file for just the first timestamp using the `corrosiff` library.
     #[pyfn(m)]#[pyo3(name = "get_start_timestamp", signature = (file_path))]
-    fn get_start_timestamp<'py>(py : Python<'py>, file_path: &str) -> PyResult<u64> {
+    fn get_start_timestamp<'_py>(py : Python<'_py>, file_path: &str) -> PyResult<u64> {
         let start = corrosiff::scan_first_timestamp(&file_path)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e)) )?;
         Ok(start)
@@ -98,8 +98,8 @@ fn corrosiff_python<'py>(_py: Python<'py>, m: &Bound<'py, PyModule>)
     /// Scans a .siff file for its start and end timestamps
     /// using the `corrosiff` library.
     #[pyfn(m)]#[pyo3(name = "get_start_and_end_timestamps", signature = (file_path))]
-    fn get_start_and_end_timestamps<'py>(
-        py: Python<'py>,
+    fn get_start_and_end_timestamps<'_py>(
+        py: Python<'_py>,
         file_path: &str
     ) -> PyResult<(u64, u64)> {
         let (start, end) = corrosiff::scan_timestamps(&file_path)
