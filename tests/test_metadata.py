@@ -1,7 +1,9 @@
-from typing import List
-import corrosiffpy
+from typing import List, TYPE_CHECKING
 
-def test_metadata(siffreaders : List[corrosiffpy.SiffIO]):
+if TYPE_CHECKING:
+    import corrosiffpy
+
+def test_metadata(siffreaders : List['corrosiffpy.SiffIO']):
     for siffreader in siffreaders:
         siffreader.get_experiment_timestamps()
         siffreader.get_epoch_timestamps_laser()
