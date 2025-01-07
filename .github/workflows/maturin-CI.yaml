@@ -34,13 +34,25 @@ jobs:
             target: s390x
           - runner: ubuntu-latest
             target: ppc64le
+        python-version:
+          [
+            "3.9",
+            "3.10",
+            "3.11",
+            "3.12",
+            # "pypy3.9",
+            # "pypy3.10",
+            "pypy3.11",
+            "pypy3.12",
+            # "3.13",
+          ]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '<3.13' # for now due to PyO3 gil issue...
+          # python-version: '<3.13' # for now due to PyO3 gil issue...
           # python-version: 3.x
-          # python-version: ${{ matrix.python-version }}
+          python-version: ${{ matrix.python-version }}
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -68,26 +80,26 @@ jobs:
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
           DROPBOX_SHARED_LINK: ${{ secrets.DROPBOX_SHARED_LINK }}
-      # - name: pytest
-      #   if: ${{ !startsWith(matrix.platform.target, 'x86') && matrix.platform.target != 'ppc64' }}
-      #   uses: uraimo/run-on-arch-action@v2
-      #   with:
-      #     arch: ${{ matrix.platform.target }}
-      #     distro: ubuntu22.04
-      #     githubToken: ${{ github.token }}
-      #     install: |
-      #       apt-get update
-      #       apt-get install -y --no-install-recommends python3 python3-pip
-      #       pip3 install -U pip pytest
-      #     run: |
-      #       set -e
-      #       pip3 install corrosiffpy[test] --find-links dist --force-reinstall
-      #       pytest tests
-      #     env: |
-      #       DROPBOX_SECRET: ${{ secrets.DROPBOX_SECRET }}
-      #       DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
-      #       DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
-      #       DROPBOX_SHARED_LINK: ${{ secrets.DROPBOX_SHARED_LINK }}
+      - name: pytest
+        if: ${{ !startsWith(matrix.platform.target, 'x86') && matrix.platform.target != 'ppc64' }}
+        uses: uraimo/run-on-arch-action@v2
+        with:
+          arch: ${{ matrix.platform.target }}
+          distro: ubuntu22.04
+          githubToken: ${{ github.token }}
+          install: |
+            apt-get update
+            apt-get install -y --no-install-recommends python3 python3-pip
+            pip3 install -U pip pytest
+          run: |
+            set -e
+            pip3 install corrosiffpy[test] --find-links dist --force-reinstall
+            pytest tests
+          env: |
+            DROPBOX_SECRET: ${{ secrets.DROPBOX_SECRET }}
+            DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+            DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+            DROPBOX_SHARED_LINK: ${{ secrets.DROPBOX_SHARED_LINK }}
 
   musllinux:
     runs-on: ${{ matrix.platform.runner }}
@@ -102,19 +114,23 @@ jobs:
             target: aarch64
           - runner: ubuntu-latest
             target: armv7
-        # python-version:
-        #   [
-        #     "3.9",
-        #     "3.10",
-        #     "3.11",
-        #     "3.12",
-        #     "3.13",
-        #   ]
+        python-version:
+          [
+            "3.9",
+            "3.10",
+            "3.11",
+            "3.12",
+            # "pypy3.9",
+            # "pypy3.10",
+            "pypy3.11",
+            "pypy3.12",
+            # "3.13",
+          ]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: <3.13 # for now due to PyO3 gil issue...
+          python-version: '<3.13' # for now due to PyO3 gil issue...
           # python-version: 3.x
           # python-version: ${{ matrix.python-version }}
       - name: Build wheels
@@ -160,14 +176,6 @@ jobs:
             target: x64
           - runner: windows-latest
             target: x86
-        # python-version:
-        #   [
-        #     "3.9",
-        #     "3.10",
-        #     "3.11",
-        #     "3.12",
-        #     "3.13",
-        #   ]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -194,12 +202,15 @@ jobs:
         if: ${{ !startsWith(matrix.platform.target, 'aarch64') }}
         shell: bash
         run: |
-          set -e
-          python3 -m venv .venv
-          source .venv/Scripts/activate
-          pip install corrosiffpy[test] --find-links dist --force-reinstall
-          pip install pytest
-          pytest tests
+          echo "::warning title=PyTests-Skipped::Pytests skipped on Windows due to low memory allocation"
+        
+        # run: |
+        #   set -e
+        #   python3 -m venv .venv
+        #   source .venv/Scripts/activate
+        #   pip install corrosiffpy[test] --find-links dist --force-reinstall
+        #   pip install pytest
+        #   pytest tests
         env:
           DROPBOX_SECRET: ${{ secrets.DROPBOX_SECRET }}
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
@@ -240,15 +251,13 @@ jobs:
           name: wheels-${{ matrix.platform }}-${{ matrix.platform.target }}-${{ strategy.job-index }}
           path: dist
       - name: pytest
-        # run: |
-        #   set -e
-        #   python3 -m venv .venv
-        #   source .venv/bin/activate
-        #   pip install corrosiffpy[test] --find-links dist --force-reinstall
-        #   pip install pytest
-        #   pytest tests
         run: |
-          echo "::warning title=PyTests-Skipped::Pytests skipped on Windows due to low memory allocation"
+          set -e
+          python3 -m venv .venv
+          source .venv/bin/activate
+          pip install corrosiffpy[test] --find-links dist --force-reinstall
+          pip install pytest
+          pytest tests
         env:
           DROPBOX_SECRET: ${{ secrets.DROPBOX_SECRET }}
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
