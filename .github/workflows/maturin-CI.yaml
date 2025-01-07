@@ -35,14 +35,12 @@ jobs:
           - runner: ubuntu-latest
             target: ppc64le
         python-version:
-          [
-            "3.9",
-            "3.10",
-            "3.11",
-            "3.12",
-            "pypy3.10",
-            # "3.13",
-          ]
+          - '3.9'
+          - '3.10'
+          - '3.11'
+          - '3.12'
+          - 'pypy3.10'
+          # '3.13'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -53,8 +51,8 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.platform.target }}
-          # args: --release --out dist --find-interpreter
-          args: --release --out dist
+          args: --release --out dist --find-interpreter
+          # args: --release --out dist
           # sccache: 'true'
           manylinux: auto
       - name: Upload wheels
@@ -112,14 +110,12 @@ jobs:
           - runner: ubuntu-latest
             target: armv7
         python-version:
-          [
-            "3.9",
-            "3.10",
-            "3.11",
-            "3.12",
-            "pypy3.10",
-            # "3.13",
-          ]
+          - '3.9'
+          - '3.10'
+          - '3.11'
+          - '3.12'
+          - 'pypy3.10'
+          # '3.13'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -130,9 +126,9 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.platform.target }}
-          # args: --release --out dist --find-interpreter
-          args: --release --out dist
-          sccache: 'true'
+          args: --release --out dist --find-interpreter
+          # args: --release --out dist
+          # sccache: 'true'
           manylinux: musllinux_1_2
       - name: Upload wheels
         uses: actions/upload-artifact@v4
