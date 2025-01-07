@@ -17,7 +17,7 @@ use crate::siffio::SiffIO;
 /// `SiffReader` struct. There are a few minorly questionable design
 /// decisions here made to remain consistent with the `C++`-based
 /// `siffreadermodule` extension module.
-fn corrosiff_python<'py>(_py: Python<'py>, m: &Bound<'py, PyModule>)
+fn corrosiff_python<'_py>(_py: Python<'_py>, m: &Bound<'_py, PyModule>)
     -> PyResult<()> {
 
     m.add_class::<SiffIO>()?;

@@ -50,7 +50,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-linux-${{ matrix.platform.target }}
+          name: wheels-linux-${{ matrix.platform.target }}-${{ strategy.job-index }}
           path: dist
       - name: pytest
         if: ${{ startsWith(matrix.platform.target, 'x86_64') }}
@@ -125,7 +125,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-musllinux-${{ matrix.platform.target }}
+          name: wheels-musllinux-${{ matrix.platform.target }}-${{ strategy.job-index }}
           path: dist
       - name: pytest
         if: ${{ !startsWith(matrix.platform.target, 'x86') && !startsWith(matrix.platform.target, 'arm')}}
@@ -182,7 +182,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-windows-${{ matrix.platform.target }}
+          name: wheels-windows-${{ matrix.platform.target }}-${{ strategy.job-index }}
           path: dist
       - name: pytest
         if: ${{ !startsWith(matrix.platform.target, 'aarch64') }}
@@ -205,8 +205,10 @@ jobs:
     strategy:
       matrix:
         platform:
-          - runner: macos-12
+          - runner: macos-13
             target: x86_64
+          - runner: macos-13
+            target: aarch64
           - runner: macos-14
             target: aarch64
     steps:
@@ -223,7 +225,7 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-macos-${{ matrix.platform.target }}
+          name: wheels-${{ matrix.platform }}-${{ matrix.platform.target }}-${{ strategy.job-index }}
           path: dist
       - name: pytest
         run: |
