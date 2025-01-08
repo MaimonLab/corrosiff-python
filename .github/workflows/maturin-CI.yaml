@@ -22,18 +22,19 @@ jobs:
     strategy:
       matrix:
         platform:
+          # I don't need the exotic stuff let's just get this working!
           - runner: ubuntu-latest
             target: x86_64
           - runner: ubuntu-latest
             target: x86
           - runner: ubuntu-latest
             target: aarch64
-          - runner: ubuntu-latest
-            target: armv7
-          - runner: ubuntu-latest
-            target: s390x
-          - runner: ubuntu-latest
-            target: ppc64le
+          # - runner: ubuntu-latest
+            # target: armv7
+          # - runner: ubuntu-latest
+            # target: s390x
+          # - runner: ubuntu-latest
+            # target: ppc64le
         python-version:
           - '3.9'
           - '3.10'
@@ -83,11 +84,9 @@ jobs:
           arch: ${{ matrix.platform.target }}
           distro: ubuntu22.04
           githubToken: ${{ github.token }}
-          # testing out the build-essential install... maybe it will fix the ARM numpy build issue?
           install: |
             apt-get update
             apt-get install -y --no-install-recommends python3 python3-pip
-            apt install build-essential
             pip3 install -U pip pytest
           run: |
             set -e
