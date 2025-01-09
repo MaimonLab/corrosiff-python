@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Dict
 import pytest
 from pathlib import Path
 import os
@@ -65,15 +65,17 @@ def siffreaders(tmp_path_factory) -> Tuple['corrosiffpy.SiffIO']:
     
     tmp_dir = tmp_path_factory.mktemp("test_siff_files")
 
-    if 'DROPBOX_SECRET' in os.environ:
-        download_files_from_dropbox(tmp_dir)
-    else:
+    if 'DROPBOX_SECRET' not in os.environ:
         # Copy local test files to the temporary directory
-        for file in LOCAL_TEST_FILES:
-            file_path = Path(file)
-            file_name = file_path.name
-            os.system(f'cp {file} {tmp_dir}/{file_name}')
+        data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+        import json
+        print(os.path.join(data_dir, 'local_keys.json'))
+        with open(os.path.join(data_dir, 'local_keys.json')) as f:
+            keys : Dict = json.load(f)
+            for k,v in keys.items():
+                os.environ[k] = v
 
+    download_files_from_dropbox(tmp_dir)
     return tuple(
         [
             corrosiffpy.open_file(str(filename))
