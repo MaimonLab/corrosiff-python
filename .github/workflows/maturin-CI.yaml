@@ -215,15 +215,7 @@ jobs:
         platform:
           - runner: macos-13
             target: x86_64
-          # - runner: macos-13
-            # target: aarch64
-          - runner: macos-14
-            target: aarch64
-          # - runner: macos-14
-          #   target: x86_64
-          # - runner: macos-15
-            # target: x86_64
-          - runner: macos-15
+          - runner: macos-14-15
             target: aarch64
     steps:
       - uses: actions/checkout@v4
@@ -286,4 +278,4 @@ jobs:
           MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         with:
           command: upload
-          args: --non-interactive wheels-*/*
+          args: --skip-existing --non-interactive wheels-*/*
