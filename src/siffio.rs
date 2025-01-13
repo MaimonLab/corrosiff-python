@@ -93,6 +93,67 @@ macro_rules! frames_default(
     };
 );
 
+/// Takes an argument that is a `FLIMParams` subclass and returns
+/// the offset term. If the argument is `None`, returns 0.0.
+fn to_offset<'py>(params : &Option<&Bound<'py, PyAny>>) -> PyResult<f64> {
+    let mut offset : f64 = 0.0;
+    if let Some(params) = params {
+        let old_units = params.getattr("units")?;
+        params.call_method1("convert_units", ("countbins",))?;
+        if params.hasattr("irfs")? {
+            let irfs : Bound<'py, PyList> = params.getattr("irfs")?
+                .getattr("irfs")?.extract()?;
+            for irf in irfs {
+                let this_offset : f64 = irf.getattr("tau_offset")?.extract()?;
+                let fraction : f64 = irf.getattr("frac")?.extract()?;
+                
+                offset += fraction * this_offset;
+            }
+        }
+        else {
+            offset = params.getattr("tau_offset")?.extract()?;
+        }
+        params.call_method1("convert_units", (old_units,))?;
+    }
+    Ok(offset)
+}
+
+/// Extracts a complex number based on the offset(s) from a `FLIMParams` subclass to rotate
+/// a phasor.
+fn to_complex_offset<'py>(params : &Option<&Bound<'py, PyAny>>, histogram_len : u32) -> PyResult<Complex<f64>> {
+    // it's just 1 + 0i if there's no params
+    let mut c_offset : Complex<f64> = Complex::new(1.0, 0.0);
+    
+    // If a FLIMParams of any type is provided, we need to calculate the complex-valued
+    // offset for correation
+    if let Some(params) = params {
+        // start from 0 + 0i
+        c_offset = Complex::new(0.0, 0.0);
+        let old_units = params.getattr("units")?;
+        params.call_method1("convert_units", ("countbins",))?;
+        // if it's a multiIrf, it's more complicated
+        if params.hasattr("irfs")? {
+            let irfs : Bound<'py, PyList> = params.getattr("irfs")?
+                .getattr("irfs")?.extract()?;
+            for irf in irfs {
+                let offset : f64 = irf.getattr("tau_offset")?.extract()?;
+                let fraction : f64 = irf.getattr("frac")?.extract()?;
+                
+                let to_pulse_frac = 2.0_f64 * std::f64::consts::PI * offset / (histogram_len as f64);
+
+                c_offset += fraction * Complex::new(to_pulse_frac.cos(), to_pulse_frac.sin());
+            }
+        }
+        else { // if it's a regular irf, it's easy
+                let offset = to_offset(&Some(params))?;
+                let frac_offset = 2.0_f64 * std::f64::consts::PI * offset/(histogram_len as f64);
+                c_offset += Complex::new(frac_offset.cos(), frac_offset.sin());
+        }
+        params.call_method1("convert_units", (old_units,))?;
+    }
+    Ok(c_offset)
+}
+
 #[pymethods]
 impl SiffIO {
 
@@ -749,16 +810,7 @@ impl SiffIO {
     ) -> PyResult<Bound<'py, PyTuple>>{
         let frames = frames_default!(frames, self);
         
-        let mut offset = 0.0;
-        match params {
-            Some(params) => {
-                let old_units = params.getattr("units")?;
-                params.call_method1("convert_units", ("countbins",))?;
-                offset = params.getattr("tau_offset")?.extract()?;
-                params.call_method1("convert_units", (old_units,))?;
-            },
-            None => {}
-        }
+        let offset = to_offset(&params)?;
 
         let ret_tuple;
         let flim_method = flim_method.unwrap_or("empirical lifetime");
@@ -784,9 +836,7 @@ impl SiffIO {
                 let histogram_length = self.reader.num_flim_bins().
                 map_err(_to_py_error)?;
 
-                let frac_offset = 2.0_f64 * std::f64::consts::PI * offset/histogram_length as f64;
-
-                let lifetime = lifetime * Complex::new(frac_offset.cos(), frac_offset.sin());
+                let lifetime = lifetime / to_complex_offset(&params, histogram_length)?;
                 
                 ret_tuple = (
                     lifetime.into_pyarray(py),
@@ -1517,14 +1567,7 @@ impl SiffIO {
 
         let frames = frames_default!(frames, self);
 
-        let mut offset = 0.0;
-        if let Some(params) = params {
-            let old_units = params.getattr("units")?;
-
-            params.call_method1("convert_units", ("countbins",))?;
-            offset = params.getattr("tau_offset")?.extract()?;
-            params.call_method1("convert_units", (old_units,))?;
-        }
+        let offset = to_offset(&params)?;
 
         let flim_method = flim_method.unwrap_or("empirical lifetime");
 
@@ -1553,9 +1596,7 @@ impl SiffIO {
                     let histogram_length = self.reader.num_flim_bins().
                     map_err(_to_py_error)?;
     
-                    let frac_offset = 2.0_f64 * std::f64::consts::PI * offset/histogram_length as f64;
-    
-                    let lifetime = lifetime / Complex::new(frac_offset.cos(), frac_offset.sin());
+                    let lifetime = lifetime / to_complex_offset(&params, histogram_length)?;
 
                     ret_tuple = (
                         lifetime.into_pyarray(py),
@@ -1597,9 +1638,7 @@ impl SiffIO {
                     let histogram_length = self.reader.num_flim_bins().
                     map_err(_to_py_error)?;
     
-                    let frac_offset = 2.0_f64 * std::f64::consts::PI * offset/histogram_length as f64;
-    
-                    let lifetime = lifetime / Complex::new(frac_offset.cos(), frac_offset.sin());
+                    let lifetime = lifetime / to_complex_offset(&params, histogram_length)?;
 
                     ret_tuple = (
                         lifetime.into_pyarray(py),
@@ -1751,14 +1790,7 @@ impl SiffIO {
         }
 
         let frames = frames_default!(frames, self);
-        let mut offset = 0.0;
-        if let Some(params) = params {
-            let old_units = params.getattr("units")?;
-
-            params.call_method1("convert_units", ("countbins",))?;
-            offset = params.getattr("tau_offset")?.extract()?;
-            params.call_method1("convert_units", (old_units,))?;
-        }
+        let offset = to_offset(&params)?;
 
         let flim_method = flim_method.unwrap_or("empirical lifetime");
 
@@ -1790,9 +1822,7 @@ impl SiffIO {
                     let histogram_length = self.reader.num_flim_bins().
                     map_err(_to_py_error)?;
     
-                    let frac_offset = 2.0_f64 * std::f64::consts::PI * offset/histogram_length as f64;
-    
-                    let lifetime = lifetime / Complex::new(frac_offset.cos(), frac_offset.sin());
+                    let lifetime = lifetime / to_complex_offset(&params, histogram_length)?;
 
                     let ret_tuple = (
                         lifetime.into_pyarray(py).call_method0("transpose")?,
@@ -1837,9 +1867,7 @@ impl SiffIO {
                 let histogram_length = self.reader.num_flim_bins().
                 map_err(_to_py_error)?;
 
-                let frac_offset = 2.0_f64 * std::f64::consts::PI * offset/histogram_length as f64;
-
-                let lifetime = lifetime / Complex::new(frac_offset.cos(), frac_offset.sin());
+                let lifetime = lifetime / to_complex_offset(&params, histogram_length)?;
 
                 let ret_tuple = (
                     lifetime.into_pyarray(py).call_method0("transpose")?,
