@@ -1135,6 +1135,45 @@ impl SiffIO {
         )
     }
 
+    #[pyo3(name = "get_roi_1d", signature = (mask, frames = None, registration = None))]
+    pub fn get_roi_1d<'py>(
+        &self,
+        py : Python<'py>,
+        mask : &Bound<'py, PyAny>,
+        frames : Option<Vec<u64>>,
+        registration : Option<HashMap<u64, (i32, i32)>>,
+    ) -> PyResult<Bound<'py, PyAny>>
+    {
+        // Check that mask is a PyArray2 or a PyArray3
+        if !PyArray2::<bool>::type_check(mask)
+        && !PyArray3::<bool>::type_check(&mask) {
+            return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                "Mask must be a 2d (if the same mask is applied to all frames) 
+                or 3d (if the mask is a volume to be cycled through) numpy array"
+            ));
+        }
+
+        let frames = frames_default!(frames, self);
+
+        if PyArray2::<bool>::type_check(&mask) {
+            let mask : PyReadonlyArray2<bool> = mask.extract()?;
+            let mask = mask.as_array();
+            return Ok(
+                self.reader.get_roi_flat(&mask, &frames, registration.as_ref())
+                .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{:?}", e)))?
+                .into_pyarray(py).into_any()
+            )
+        }
+
+        let mask : PyReadonlyArray3<bool> = mask.extract()?;
+        let mask = mask.as_array();
+        Ok(
+            self.reader.get_roi_volume(&mask, &frames, registration.as_ref())
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{:?}", e)))?
+            .into_pyarray(py).into_any()
+        )
+    }
+
     /// Mask may have 2 or 3 dimensions, but
     /// if so then be aware that the frames will be
     /// iterated through sequentially, rather than

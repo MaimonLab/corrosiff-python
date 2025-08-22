@@ -40,6 +40,7 @@ def download_files_from_dropbox(local_path : Path):
     REFRESH_TOKEN = os.environ['DROPBOX_REFRESH_TOKEN']
     SHARED_LINK = os.environ['DROPBOX_SHARED_LINK']
 
+    print("Using Dropbox to download files...")
     dbx = Dropbox(
         app_key= DROPBOX_APP_KEY,
         app_secret=DROPBOX_SECRET_TOKEN,
@@ -51,7 +52,8 @@ def download_files_from_dropbox(local_path : Path):
 
     # link = dbx.sharing_get_shared_link_metadata(SHARED_LINK)
 
-    for x in dbx.files_list_folder('', shared_link=link).entries:
+    for x in dbx.files_list_folder('', shared_link=link).entries[:1]:
+        print(f"Downloading {x.name}...")
         meta, response = dbx.sharing_get_shared_link_file(link.url, path = f'/{x.name}')
         with open(local_path / meta.name, 'wb') as f:
             f.write(response.content)

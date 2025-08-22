@@ -1,6 +1,7 @@
 """
 For now these just test that the methods run!
 """
+from typing import List
 import numpy as np
 
 class FLIMParams:
@@ -25,7 +26,35 @@ class FLIMParams:
         except StopIteration:
             return 0
     
+class MultiFLIMParamsDummy:
+    """ Dummy version of multi pulse"""
+    def __init__(self, *args):
+        self.params = args
+
+    def as_units(self, units):
+        return self
     
+    def convert_units(self, units):
+        pass
+    
+    @property
+    def units(self):
+        return 'nanoseconds'
+
+    @property
+    def tau_offset(self):
+        try:
+            return [param.offset for param in self.params if isinstance(param, Irf)]
+        except StopIteration:
+            return 0
+        
+    @property
+    def irfs(self):
+        try:
+            return MultiIrf([irf for irf in self.params if isinstance(irf, Irf)])
+        except StopIteration:
+            return []
+ 
 class Exp:
     def __init__(self, tau, frac, units):
         self.tau = tau
@@ -37,6 +66,19 @@ class Irf:
         self.offset = offset
         self.sigma = sigma
         self.units = units
+
+    @property
+    def tau_offset(self):
+        return self.offset
+
+class FractionalIrf(Irf):
+    def __init__(self, *args, frac = 1, **kwargs):
+        self.frac = frac
+        super().__init__(*args, **kwargs)
+
+class MultiIrf:
+    def __init__(self, firfs : List[FractionalIrf]):
+        self.irfs = firfs
 
 def test_read_histogram(siffreaders):
 
@@ -75,6 +117,15 @@ def test_read_flim_frames(siffreaders):
         siffreader.flim_map(params = test_params, frames = framelist, registration=None)[0]
 
         siffreader.flim_map(params = test_params, frames = framelist, registration=dummy_reg)[0]
+
+        mpfps = MultiFLIMParamsDummy(
+            Exp(tau = 0.5, frac = 0.5, units = 'nanoseconds'),
+            Exp(tau = 2.5, frac = 0.5, units = 'nanoseconds'),
+            FractionalIrf(offset = 1.1, sigma = 0.2, frac = 0.5, units = 'nanoseconds'),
+            FractionalIrf(offset = 4.1, sigma = 0.2, frac = 0.5, units = 'nanoseconds'),
+        )
+
+        siffreader.flim_map(params = mpfps, frames = framelist, registration=dummy_reg)[0]
 
 def test_sum_2d_mask(siffreaders):
 
@@ -129,6 +180,19 @@ def test_sum_2d_mask(siffreaders):
 
         siffreader.sum_rois_flim(masks, test_params, frames = framelist, registration=None)[0]
 
+        dummy_mpfp = MultiFLIMParamsDummy(
+            Exp(tau = 0.5, frac = 0.5, units = 'nanoseconds'),
+            Exp(tau = 2.5, frac = 0.5, units = 'nanoseconds'),
+            FractionalIrf(offset = 1.1, sigma = 0.2, frac = 0.5, units = 'nanoseconds'),
+            FractionalIrf(offset = 4.1, sigma = 0.2, frac = 0.5, units = 'nanoseconds'),
+        )
+
+        siffreader.sum_rois_flim(masks, dummy_mpfp, frames = framelist, registration=dummy_reg)[0]
+
+        siffreader.sum_rois_flim(masks, dummy_mpfp, frames = framelist, registration=None)[0]
+
+        lifetimes, intensities, _ = siffreader.sum_rois_flim(masks, dummy_mpfp, frames = framelist, registration=dummy_reg)
+
 def test_sum_3d_mask(siffreaders):
 
     for siffreader in siffreaders:
@@ -149,6 +213,13 @@ def test_sum_3d_mask(siffreaders):
             Irf(offset = 1.1, sigma = 0.2, units = 'nanoseconds'),
         )
 
+        dummy_mpfps = MultiFLIMParamsDummy(
+            Exp(tau = 0.5, frac = 0.5, units = 'nanoseconds'),
+            Exp(tau = 2.5, frac = 0.5, units = 'nanoseconds'),
+            FractionalIrf(offset = 1.1, sigma = 0.2, frac = 0.5, units = 'nanoseconds'),
+            FractionalIrf(offset = 4.1, sigma = 0.2, frac = 0.5, units = 'nanoseconds'),
+        )
+
         for three_d_roi in rois:
             siffreader.sum_roi_flim(three_d_roi, test_params, registration=None)[0]
 
@@ -164,3 +235,7 @@ def test_sum_3d_mask(siffreaders):
             siffreader.sum_roi_flim(three_d_roi, test_params, frames = framelist, registration=dummy_reg)
 
             siffreader.sum_roi_flim(three_d_roi, test_params, frames = framelist, registration=dummy_reg)[0]
+
+            siffreader.sum_roi_flim(three_d_roi, dummy_mpfps, frames = framelist, registration=dummy_reg)[0]
+
+            siffreader.sum_roi_flim(three_d_roi, dummy_mpfps, frames = framelist, registration=None)[0]

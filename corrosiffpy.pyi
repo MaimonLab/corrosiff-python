@@ -79,7 +79,7 @@ class SiffIO():
         ...
 
 
-    def get_num_frames(self)->int:
+    def num_frames(self)->int:
         """
         Number of frames (including flyback)
         """
@@ -362,6 +362,56 @@ class SiffIO():
         - `flim_map` : For average arrival time + intensity data. 
         """
         ...
+
+    def get_roi_1d(
+        self,
+        mask : 'np.ndarray[Any, np.dtype[bool]]',
+        *,
+        frames : Optional[List[int]] = None,
+        registration : Optional[Dict] = None,
+    ) -> 'np.ndarray[Any, np.dtype[np.uint64]]':
+        """
+        Returns a timeseries of just the pixels
+        within the ROI. This is a 2D array of
+        shape (`len(frames)`, `mask.sum()`),
+        where `mask.sum()` is the number of pixels
+        in the mask that are `True`. If the mask
+        is 3D, then the first dimension is assumed
+        to be a `z` dimension and the frames will
+        be iterated through sequentially, i.e.
+        `mask[0]` is applied to `frames[0]`,
+        `mask[1]` is applied to `frames[1]`, ... `mask[k]` is
+        applied to `frames[n]` where `k = n % mask.shape[0]`.
+
+        ## Arguments
+
+        * `mask` : np.ndarray[Any, np.dtype[bool]]
+            A boolean mask of the same shape as the frames
+            to be summed (if to be applied to all the frames).
+            If it's a 3D mask, the slowest dimension is assumed
+            to be a `z` dimension and cycles through the frames
+            provided, i.e. `mask[0]` is applied to `frames[0]`,
+            `mask[1]` is applied to `frames[1]`, ... `mask[k]` is
+            applied to `frames[n]` where `k = n % mask.shape[0]`.
+
+        * `frames` : Optional[List[int]]
+            A list of frames to retrieve. If `None`, all frames
+            will be retrieved.
+
+        * `registration` : Optional[Dict]
+            A dictionary containing registration information
+            (the keys correspond to the frame number, the values
+            are tuples of (y,x) offsets). If None, no registration
+            will be applied.
+
+        ## Returns
+
+        * `np.ndarray[Any, np.dtype[np.uint64]]`
+            A 2D numpy array containing the sum of the pixels
+            in the ROI for each frame requested. Dimensions are
+            `(len(frames), mask.sum())`, where `mask.sum()` is the
+            number of pixels in the mask that are `True`.
+        """
 
     def sum_roi(
         self,
