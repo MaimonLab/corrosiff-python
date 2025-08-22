@@ -52,7 +52,7 @@ def download_files_from_dropbox(local_path : Path):
 
     # link = dbx.sharing_get_shared_link_metadata(SHARED_LINK)
 
-    for x in dbx.files_list_folder('', shared_link=link).entries[:1]:
+    for x in dbx.files_list_folder('', shared_link=link).entries:
         print(f"Downloading {x.name}...")
         meta, response = dbx.sharing_get_shared_link_file(link.url, path = f'/{x.name}')
         with open(local_path / meta.name, 'wb') as f:
