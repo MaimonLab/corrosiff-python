@@ -10,13 +10,91 @@ Its primary tool is the `SiffIO` class, which wraps `corrosiff`'s
 decisions here made to remain consistent with the `C++`-based
 `siffreadermodule` extension module.
 """
-from typing import Any, Tuple, List, Dict, Optional, Union
+from typing import Any, Tuple, List, Dict, Optional, Union, TypeVar
 
 import numpy as np
 
 from siffpy import FLIMParams
 
+D = TypeVar('D', np.dtype[np.floating],)
+
 def open_file(filename : str)->'SiffIO':...
+"""
+Returns a `SiffIO` object for reading the specified file.
+
+## Arguments
+
+* `filename` : str
+    The path to the `.siff` or `.tiff` file to be read.
+
+## Returns
+
+* `SiffIO`
+    A `SiffIO` object for reading the specified file.
+
+## Example
+    ```python
+    import corrosiffpy
+
+    # Load the file
+    filename = '/path/to/file.siff'
+    siffio = corrosiffpy.open_file(filename)
+    print(siffio.filename)
+    >>> '/path/to/file.siff'
+    ```
+"""
+
+def par_dfof(
+    data : np.ndarray[Any, D],
+    baseline : np.ndarray[Any, D],
+    axis : int = -1,
+    out : Optional[np.ndarray[Any, D]] = None,
+) -> np.ndarray[Any, D]:...
+"""
+
+WARNING : NOT IMPLEMENTED YET
+
+Performs parallel dF/F calculation on the provided data
+using the requested baseline array. dF/F is calculated as
+`(data - baseline) / baseline`. The two operations are
+performed along the requested axis and should be exactly
+numerically equivalent to:
+
+```python
+import numpy as np
+
+def par_dfof(
+    data : np.ndarray[Any, D],
+    baseline : np.ndarray[Any, D],
+    axis : int = -1,
+    out : Optional[np.ndarray[Any, D]] = None,
+) -> np.ndarray[Any, D]:
+    if out is None:
+        out = np.empty_like(data)
+    np.subtract(data, baseline, out=out, axis=axis)
+    np.divide(out, baseline, out=out, axis=axis)
+    return out
+```
+
+## Arguments
+
+* `data` : np.ndarray[Any, D]
+    The data array to process. TODO annotate the shape.
+
+* `baseline` : np.ndarray[Any, D]
+    The baseline array to use for dF/F calculation.
+
+* `axis` : int (optional)
+    The axis along which to compute dF/F. Default is -1 (last axis).
+
+* `out` : Optional[np.ndarray[Any, D]] (optional)
+    An optional output array to store the result.
+
+## Returns
+
+* `np.ndarray[Any, D]`
+    The dF/F processed array.
+"""
 
 class SiffIO():
     """

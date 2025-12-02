@@ -657,6 +657,17 @@ impl SiffIO {
         Ok(ret_list)
     }
 
+    #[pyo3(name = "get_sync_counts", signature = (frames=None))]
+    pub fn get_sync_counts_py<'py>(&self, py : Python<'py>, frames : Option<Vec<u64>>) -> PyResult<Bound<'py, PyArray1<u64>>> {
+        let frames = frames_default!(frames, self);
+        Ok(
+            self.reader
+            .get_sync_number(&frames)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{:?}", e)))?
+            .into_pyarray(py)
+        )
+    }
+
 /************************************************************
      * FULL-FRAME DATA
      * 

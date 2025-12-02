@@ -55,8 +55,9 @@ def download_files_from_dropbox(local_path : Path):
     for x in dbx.files_list_folder('', shared_link=link).entries:
         print(f"Downloading {x.name}...")
         meta, response = dbx.sharing_get_shared_link_file(link.url, path = f'/{x.name}')
-        with open(local_path / meta.name, 'wb') as f:
-            f.write(response.content)
+        if not (local_path / meta.name).exists():
+            with open(local_path / meta.name, 'wb') as f:
+                f.write(response.content)
 
 
 @pytest.fixture(scope='session')
@@ -68,7 +69,16 @@ def siffreaders(tmp_path_factory) -> Tuple['corrosiffpy.SiffIO']:
     tmp_dir = tmp_path_factory.mktemp("test_siff_files")
 
     if 'DROPBOX_SECRET' not in os.environ:
-        # Copy local test files to the temporary directory
+        # If there's already downloaded files just use those
+        if Path("./test_siff_files").exists():
+            tmp_dir = Path("./test_siff_files")
+            return tuple(
+                [
+                    corrosiffpy.open_file(str(filename))
+                    for filename in tmp_dir.glob('*.siff')
+                ]
+            )
+
         data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
         import json
         print(os.path.join(data_dir, 'local_keys.json'))
@@ -84,3 +94,21 @@ def siffreaders(tmp_path_factory) -> Tuple['corrosiffpy.SiffIO']:
             for filename in tmp_dir.glob('*.siff')
         ]
     )
+
+# Download the files if we are running this script directly
+if __name__ == "__main__":
+    if not Path("./test_siff_files").exists():
+        Path("./test_siff_files").mkdir()
+    tmp_dir = Path("./test_siff_files")
+
+    if 'DROPBOX_SECRET' not in os.environ:
+        # Copy local test files to the temporary directory
+        data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+        import json
+        print(os.path.join(data_dir, 'local_keys.json'))
+        with open(os.path.join(data_dir, 'local_keys.json')) as f:
+            keys : Dict = json.load(f)
+            for k,v in keys.items():
+                os.environ[k] = v
+
+    download_files_from_dropbox(tmp_dir)

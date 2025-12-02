@@ -53,13 +53,13 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "corrosiff"
 version = "0.1.0"
-source = "git+https://github.com/MaimonLab/Corrosiff.git?branch=dev#c0fab6fd0c9687c63a38833fbe0ef1cc414c4a0d"
 dependencies = [
  "binrw",
  "bytemuck",
  "itertools",
  "ndarray",
  "num-complex",
+ "num-traits",
  "rand",
  "rayon",
 ]
@@ -69,6 +69,7 @@ name = "corrosiff-python"
 version = "0.1.1"
 dependencies = [
  "corrosiff",
+ "ndarray",
  "num-complex",
  "numpy",
  "pyo3",
@@ -173,6 +174,7 @@ dependencies = [
  "num-integer",
  "num-traits",
  "rawpointer",
+ "rayon",
 ]
 
 [[package]]
