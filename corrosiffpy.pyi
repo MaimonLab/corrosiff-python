@@ -1327,6 +1327,52 @@ class SiffIO():
         """
         ...
 
+    def get_sync_counts(self, frames : Optional[List[int]] = None
+                        ) -> np.ndarray[Any, np.dtype[np.uint64]]:
+        """
+        Returns an array containing the number of laser sync rollover
+        signals detected up to each frame's trigger. The sync rollovers
+        correspond to every 1024 sync pulses. This should match the
+        `get_epoch_timestamps_laser` function's timing but is not rescaled
+        by the averaged sync rate into nanoseconds (done during image saving).
+
+        ## Arguments
+
+        * `frames` : List[int]
+            A list of frames to retrieve. If `None`, all frames
+            will be retrieved.
+
+        ## Returns
+
+        * `np.ndarray[Any, np.dtype[np.uint64]]`
+            The number of sync rollover signals detected up to each frame's trigger.
+            Note that each rollover corresponds to 1024 sync pulses.
+
+
+        ## Example
+
+            ```python
+            import numpy as np
+            import corrosiffpy
+
+            # Load the file
+            filename = '/path/to/file.siff'
+            siffio = corrosiffpy.open_file(filename)
+
+            n_rollovers = siffio.get_sync_counts(frames = list(range(1000)))
+
+            print(f'Number of laser pulses : {1024 * n_rollovers}')
+
+            >>> 'Number of laser pulses : [ 79719424  79719424  80449536  80449536 ...'
+            ```
+
+        ## See also
+
+        - `get_epoch_timestamps_laser`
+        """
+        ...
+
+
     def get_appended_text(
             self,
         )->List[Tuple[int, str, Optional[float]]]:

@@ -658,7 +658,8 @@ impl SiffIO {
     }
 
     #[pyo3(name = "get_sync_counts", signature = (frames=None))]
-    pub fn get_sync_counts_py<'py>(&self, py : Python<'py>, frames : Option<Vec<u64>>) -> PyResult<Bound<'py, PyArray1<u64>>> {
+    pub fn get_sync_counts_py<'py>(&self, py : Python<'py>, frames : Option<Vec<u64>>)
+    -> PyResult<Bound<'py, PyArray1<u64>>> {
         let frames = frames_default!(frames, self);
         Ok(
             self.reader
