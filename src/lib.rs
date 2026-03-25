@@ -1,5 +1,10 @@
 use corrosiff;
 
+use ndarray::{Axis, s};
+use ndarray::parallel::prelude::*;
+use numpy::ndarray::{ArrayView, ArrayViewMut, ArrayD, Dimension, ArrayBase, OwnedRepr};
+use numpy::{PyArray, PyArrayDyn, PyArrayMethods, PyReadonlyArrayDyn, PyReadwriteArrayDyn};
+use pyo3::PyTypeCheck;
 use pyo3::prelude::*;
 
 mod siffio;
@@ -109,5 +114,146 @@ fn corrosiff_python<'py>(_py: Python<'py>, m: &Bound<'py, PyModule>)
         Ok((start, end))
     }
 
+    /// Calls the `corrosiff` library's `par_dfof` function
+    /// to compute dF/F on large arrays with some parallelism
+    /// to make it a little faster and require fewer allocations
+    /// of big arrays.
+    #[pyfn(m)]
+    #[pyo3(name = "par_dfof", signature = (data, baseline, axis = -1, out = None))]
+    fn par_dfof_py<'py>(
+        _py: Python<'py>,
+        data: &Bound<'py, PyAny>,
+        baseline: &Bound<'py, PyAny>,
+        axis : isize,
+        out : Option<&Bound<'py, PyAny>>,
+    ) -> PyResult<Bound<'py, numpy::PyArrayDyn<PyAny>>> {
+
+        // If it's `f32`, do it in `f32`
+        if PyArrayDyn::<f32>::type_check(data) {
+            if !PyArrayDyn::<f32>::type_check(baseline) {
+                return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                    "data and baseline must be of the same type",
+                ));
+            }
+
+            let data = data.extract::<PyReadonlyArrayDyn<f32>>()?;
+            let data = data.as_array();
+            let baseline = baseline.extract::<PyReadonlyArrayDyn<f32>>()?;
+
+            let baseline = baseline.as_array();
+
+            if axis >= data.ndim() as isize || axis < -(data.ndim() as isize) {
+                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                    "axis out of bounds for array",
+                ));
+            }
+            
+            let axis = match axis < 0 {
+                // Convert negative axis to positive
+                true => (data.ndim() as isize + axis) as usize,
+                false => axis as usize,
+            };
+
+            // if out.is_some() {
+            //     let o = out.unwrap().extract::<PyReadwriteArrayDyn<f32>>()?;
+            //     let mut o = unsafe { o.as_array_mut() };
+            //     par_dfof_rs(data, baseline, axis, out);
+            //     return Ok(o.to_owned().to_pyarray(_py));
+            // }
+
+            // let mut owned : Option<ArrayViewMut<f32, _>>;
+            // let mut out : ArrayViewMut<f32, _> = match out {
+            //     Some(o) => {
+            //         let o = o.extract::<PyReadonlyArrayDyn<f32>>()?;
+            //         unsafe { o.as_array_mut() }
+            //     },
+            //     None => {
+            //         let shape = data.shape();
+            //         let mut temp = numpy::ndarray::ArrayD::<f32>::zeros(shape);
+            //         owned = Some(temp.view_mut());
+            //         owned.as_mut().unwrap().view_mut()
+            //     }
+            // };
+
+            return Err(PyErr::new::<pyo3::exceptions::PyNotImplementedError, _>(
+                "par_dfof for f32 not implemented yet",
+            ))
+        }
+
+        // If it's `f64`, do it in `f64`
+        if PyArrayDyn::<f64>::type_check(data) {
+            if !PyArrayDyn::<f64>::type_check(baseline) {
+                return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                    "data and baseline must be of the same type",
+                ));
+            }
+
+            // Do the operation in f64
+
+            let data = data.extract::<PyReadonlyArrayDyn<f64>>()?;
+            let data = data.as_array();
+            let baseline = baseline.extract::<PyReadonlyArrayDyn<f64>>()?;
+            let baseline = baseline.as_array();
+
+            if axis >= data.ndim() as isize || axis < -(data.ndim() as isize) {
+                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                    "axis out of bounds for array",
+                ));
+            }
+
+            let axis = match axis < 0 {
+                // Convert negative axis to positive
+                true => (data.ndim() as isize + axis) as usize,
+                false => axis as usize,
+            };
+
+            return Err(PyErr::new::<pyo3::exceptions::PyNotImplementedError, _>(
+                "par_dfof for f64 not implemented yet",
+            ))
+        }
+
+
+        Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+            "data and baseline must be `f32` or `f64` arrays",
+        ))
+    }
     Ok(())
+}
+
+/// Subtracts `baseline` from `data` and divides by `baseline`,
+/// storing the result in `out`.
+fn par_dfof_rs<T, D, F>(
+    data : ArrayView<T, D>,
+    baseline : ArrayView<T, F>,
+    axis : usize,
+    mut out : ArrayViewMut<T, D>
+) -> ()
+where
+    T : Send + Sync,
+    D : Dimension,
+    F : Dimension,
+{
+    // Check that data and baseline are arrays of the same shape
+    if data.shape() != baseline.shape() {
+        panic!("Data and baseline must have the same shape");
+    }
+
+    let chunk_size = 2500;
+    let data_chunks = data.axis_chunks_iter(Axis(axis), chunk_size);
+
+    // Compute dF/F
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_dfof() {
+        // Test shared F0 across columns (scalar)
+
+        // Test per-column F0 (1D array)
+
+        // Test rolling F0 (2D array)
+        
+    }
 }

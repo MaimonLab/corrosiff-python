@@ -10,13 +10,91 @@ Its primary tool is the `SiffIO` class, which wraps `corrosiff`'s
 decisions here made to remain consistent with the `C++`-based
 `siffreadermodule` extension module.
 """
-from typing import Any, Tuple, List, Dict, Optional, Union
+from typing import Any, Tuple, List, Dict, Optional, Union, TypeVar
 
 import numpy as np
 
 from siffpy import FLIMParams
 
+D = TypeVar('D', np.dtype[np.floating],)
+
 def open_file(filename : str)->'SiffIO':...
+"""
+Returns a `SiffIO` object for reading the specified file.
+
+## Arguments
+
+* `filename` : str
+    The path to the `.siff` or `.tiff` file to be read.
+
+## Returns
+
+* `SiffIO`
+    A `SiffIO` object for reading the specified file.
+
+## Example
+    ```python
+    import corrosiffpy
+
+    # Load the file
+    filename = '/path/to/file.siff'
+    siffio = corrosiffpy.open_file(filename)
+    print(siffio.filename)
+    >>> '/path/to/file.siff'
+    ```
+"""
+
+def par_dfof(
+    data : np.ndarray[Any, D],
+    baseline : np.ndarray[Any, D],
+    axis : int = -1,
+    out : Optional[np.ndarray[Any, D]] = None,
+) -> np.ndarray[Any, D]:...
+"""
+
+WARNING : NOT IMPLEMENTED YET
+
+Performs parallel dF/F calculation on the provided data
+using the requested baseline array. dF/F is calculated as
+`(data - baseline) / baseline`. The two operations are
+performed along the requested axis and should be exactly
+numerically equivalent to:
+
+```python
+import numpy as np
+
+def par_dfof(
+    data : np.ndarray[Any, D],
+    baseline : np.ndarray[Any, D],
+    axis : int = -1,
+    out : Optional[np.ndarray[Any, D]] = None,
+) -> np.ndarray[Any, D]:
+    if out is None:
+        out = np.empty_like(data)
+    np.subtract(data, baseline, out=out, axis=axis)
+    np.divide(out, baseline, out=out, axis=axis)
+    return out
+```
+
+## Arguments
+
+* `data` : np.ndarray[Any, D]
+    The data array to process. TODO annotate the shape.
+
+* `baseline` : np.ndarray[Any, D]
+    The baseline array to use for dF/F calculation.
+
+* `axis` : int (optional)
+    The axis along which to compute dF/F. Default is -1 (last axis).
+
+* `out` : Optional[np.ndarray[Any, D]] (optional)
+    An optional output array to store the result.
+
+## Returns
+
+* `np.ndarray[Any, D]`
+    The dF/F processed array.
+"""
 
 class SiffIO():
     """
@@ -79,7 +157,7 @@ class SiffIO():
         ...
 
 
-    def get_num_frames(self)->int:
+    def num_frames(self)->int:
         """
         Number of frames (including flyback)
         """
@@ -362,6 +440,122 @@ class SiffIO():
         - `flim_map` : For average arrival time + intensity data. 
         """
         ...
+
+    def get_roi_1d(
+        self,
+        mask : 'np.ndarray[Any, np.dtype[bool]]',
+        *,
+        frames : Optional[List[int]] = None,
+        registration : Optional[Dict] = None,
+    ) -> 'np.ndarray[Any, np.dtype[np.uint16]]':
+        """
+        Returns a timeseries of just the pixels
+        within the ROI. This is a 2D array of
+        shape (`len(frames)`, `mask.sum()`),
+        where `mask.sum()` is the number of pixels
+        in the mask that are `True`. If the mask
+        is 3D, then the first dimension is assumed
+        to be a `z` dimension and the frames will
+        be iterated through sequentially, i.e.
+        `mask[0]` is applied to `frames[0]`,
+        `mask[1]` is applied to `frames[1]`, ... `mask[k]` is
+        applied to `frames[n]` where `k = n % mask.shape[0]`.
+
+        ## Arguments
+
+        * `mask` : np.ndarray[Any, np.dtype[bool]]
+            A boolean mask of the same shape as the frames
+            to be summed (if to be applied to all the frames).
+            If it's a 3D mask, the slowest dimension is assumed
+            to be a `z` dimension and cycles through the frames
+            provided, i.e. `mask[0]` is applied to `frames[0]`,
+            `mask[1]` is applied to `frames[1]`, ... `mask[k]` is
+            applied to `frames[n]` where `k = n % mask.shape[0]`.
+
+        * `frames` : Optional[List[int]]
+            A list of frames to retrieve. If `None`, all frames
+            will be retrieved.
+
+        * `registration` : Optional[Dict]
+            A dictionary containing registration information
+            (the keys correspond to the frame number, the values
+            are tuples of (y,x) offsets). If None, no registration
+            will be applied.
+
+        ## Returns
+
+        * `np.ndarray[Any, np.dtype[np.uint16]]`
+            A 2D numpy array containing the sum of the pixels
+            in the ROI for each frame requested. Dimensions are
+            `(len(frames), mask.sum())`, where `mask.sum()` is the
+            number of pixels in the mask that are `True`.
+        """
+
+    def get_roi_1d_flim(
+        self,
+        mask : 'np.ndarray[Any, np.dtype[bool]]',
+        *,
+        params : Optional[FLIMParams] = None,
+        frames : Optional[List[int]] = None,
+        flim_method : str = 'empirical lifetime',
+        registration : Optional[Dict] = None,
+    ) -> Tuple[
+        Union['np.ndarray[Any, np.dtype[np.float64]]', 'np.ndarray[Any, np.dtype[np.complex128]]'],
+        'np.ndarray[Any, np.dtype[np.uint16]]',
+        'np.ndarray[Any, np.dtype[np.float64]]'
+        ]:
+        """
+        Returns a timeseries of just the pixels
+        within the ROI. This is a 2D array of
+        shape (`len(frames)`, `mask.sum()`),
+        where `mask.sum()` is the number of pixels
+        in the mask that are `True`. If the mask
+        is 3D, then the first dimension is assumed
+        to be a `z` dimension and the frames will
+        be iterated through sequentially, i.e.
+        `mask[0]` is applied to `frames[0]`,
+        `mask[1]` is applied to `frames[1]`, ... `mask[k]` is
+        applied to `frames[n]` where `k = n % mask.shape[0]`.
+
+        ## Arguments
+
+        * `mask` : np.ndarray[Any, np.dtype[bool]]
+            A boolean mask of the same shape as the frames
+            to be summed (if to be applied to all the frames).
+            If it's a 3D mask, the slowest dimension is assumed
+            to be a `z` dimension and cycles through the frames
+            provided, i.e. `mask[0]` is applied to `frames[0]`,
+            `mask[1]` is applied to `frames[1]`, ... `mask[k]` is
+            applied to `frames[n]` where `k = n % mask.shape[0]`.
+
+        * `params` : Optional[FLIMParams]
+            The FLIM parameters to use for the analysis. The offset
+            term will be subtracted from the empirical lifetime values.
+            If `None`, the offset will be 0.
+
+        * `frames` : Optional[List[int]]
+            A list of frames to retrieve. If `None`, all frames
+            will be retrieved.
+
+        * `flim_method` : str
+            The method to use for FLIM analysis. Options are
+            'empirical lifetime' and 'phasor'.
+
+        * `registration` : Optional[Dict]
+            A dictionary containing registration information
+            (the keys correspond to the frame number, the values
+            are tuples of (y,x) offsets). If None, no registration
+            will be applied.
+
+        ## Returns
+
+        * `Tuple[np.ndarray[Any, np.dtype[np.float64]], np.ndarray[Any, np.dtype[np.uint16]], np.ndarray[Any, np.dtype[np.float64]]]`
+            A tuple of three numpy arrays containing the lifetime data (as float64 or complex128, depending on if it's
+            empirical lifetime or phasor data),
+            the intensity data (as uint16), and the confidence data (as float64 or None). The lifetime and intensity
+            arrays have dimensions `(len(frames), mask.sum())`, where `mask.sum()` is the number of pixels in the mask
+            that are `True`.
+        """
 
     def sum_roi(
         self,
@@ -1198,6 +1392,52 @@ class SiffIO():
         - `get_epoch_timestamps_system`
         """
         ...
+
+    def get_sync_counts(self, frames : Optional[List[int]] = None
+                        ) -> np.ndarray[Any, np.dtype[np.uint64]]:
+        """
+        Returns an array containing the number of laser sync rollover
+        signals detected up to each frame's trigger. The sync rollovers
+        correspond to every 1024 sync pulses. This should match the
+        `get_epoch_timestamps_laser` function's timing but is not rescaled
+        by the averaged sync rate into nanoseconds (done during image saving).
+
+        ## Arguments
+
+        * `frames` : List[int]
+            A list of frames to retrieve. If `None`, all frames
+            will be retrieved.
+
+        ## Returns
+
+        * `np.ndarray[Any, np.dtype[np.uint64]]`
+            The number of sync rollover signals detected up to each frame's trigger.
+            Note that each rollover corresponds to 1024 sync pulses.
+
+
+        ## Example
+
+            ```python
+            import numpy as np
+            import corrosiffpy
+
+            # Load the file
+            filename = '/path/to/file.siff'
+            siffio = corrosiffpy.open_file(filename)
+
+            n_rollovers = siffio.get_sync_counts(frames = list(range(1000)))
+
+            print(f'Number of laser pulses : {1024 * n_rollovers}')
+
+            >>> 'Number of laser pulses : [ 79719424  79719424  80449536  80449536 ...'
+            ```
+
+        ## See also
+
+        - `get_epoch_timestamps_laser`
+        """
+        ...
+
 
     def get_appended_text(
             self,

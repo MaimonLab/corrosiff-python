@@ -1,4 +1,5 @@
 from typing import List, TYPE_CHECKING
+import numpy as np
 
 if TYPE_CHECKING:
     import corrosiffpy
@@ -9,6 +10,8 @@ def test_metadata(siffreaders : List['corrosiffpy.SiffIO']):
         siffreader.get_epoch_timestamps_laser()
         siffreader.get_epoch_timestamps_system()
         siffreader.get_epoch_both()
+        siffreader.get_sync_counts()
+    
 
         # I don't understand why this line is causing problems
         # only on a few linux builds!!

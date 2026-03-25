@@ -11,6 +11,7 @@ use pyo3::types::{PyDict, PyList, PyTuple};
 use corrosiff::{CorrosiffError, SiffReader, FramesError};
 
 use std::collections::HashMap;
+use std::f32::consts::E;
 
 /// Almost all of the errors that can be thrown by the `corrosiff` library
 /// have standard explanations that should be converted to informative
@@ -92,6 +93,67 @@ macro_rules! frames_default(
         ).unwrap()
     };
 );
+
+/// Takes an argument that is a `FLIMParams` subclass and returns
+/// the offset term. If the argument is `None`, returns 0.0.
+fn to_offset<'py>(params : &Option<&Bound<'py, PyAny>>) -> PyResult<f64> {
+    let mut offset : f64 = 0.0;
+    if let Some(params) = params {
+        let old_units = params.getattr("units")?;
+        params.call_method1("convert_units", ("countbins",))?;
+        if params.hasattr("irfs")? {
+            let irfs : Bound<'py, PyList> = params.getattr("irfs")?
+                .getattr("irfs")?.extract()?;
+            for irf in irfs {
+                let this_offset : f64 = irf.getattr("tau_offset")?.extract()?;
+                let fraction : f64 = irf.getattr("frac")?.extract()?;
+                
+                offset += fraction * this_offset;
+            }
+        }
+        else {
+            offset = params.getattr("tau_offset")?.extract()?;
+        }
+        params.call_method1("convert_units", (old_units,))?;
+    }
+    Ok(offset)
+}
+
+/// Extracts a complex number based on the offset(s) from a `FLIMParams` subclass to rotate
+/// a phasor.
+fn to_complex_offset<'py>(params : &Option<&Bound<'py, PyAny>>, histogram_len : u32) -> PyResult<Complex<f64>> {
+    // it's just 1 + 0i if there's no params
+    let mut c_offset : Complex<f64> = Complex::new(1.0, 0.0);
+    
+    // If a FLIMParams of any type is provided, we need to calculate the complex-valued
+    // offset for correation
+    if let Some(params) = params {
+        // start from 0 + 0i
+        c_offset = Complex::new(0.0, 0.0);
+        let old_units = params.getattr("units")?;
+        params.call_method1("convert_units", ("countbins",))?;
+        // if it's a multiIrf, it's more complicated
+        if params.hasattr("irfs")? {
+            let irfs : Bound<'py, PyList> = params.getattr("irfs")?
+                .getattr("irfs")?.extract()?;
+            for irf in irfs {
+                let offset : f64 = irf.getattr("tau_offset")?.extract()?;
+                let fraction : f64 = irf.getattr("frac")?.extract()?;
+                
+                let to_pulse_frac = 2.0_f64 * std::f64::consts::PI * offset / (histogram_len as f64);
+
+                c_offset += fraction * Complex::new(to_pulse_frac.cos(), to_pulse_frac.sin());
+            }
+        }
+        else { // if it's a regular irf, it's easy
+                let offset = to_offset(&Some(params))?;
+                let frac_offset = 2.0_f64 * std::f64::consts::PI * offset/(histogram_len as f64);
+                c_offset += Complex::new(frac_offset.cos(), frac_offset.sin());
+        }
+        params.call_method1("convert_units", (old_units,))?;
+    }
+    Ok(c_offset)
+}
 
 #[pymethods]
 impl SiffIO {
@@ -596,6 +658,18 @@ impl SiffIO {
         Ok(ret_list)
     }
 
+    #[pyo3(name = "get_sync_counts", signature = (frames=None))]
+    pub fn get_sync_counts_py<'py>(&self, py : Python<'py>, frames : Option<Vec<u64>>)
+    -> PyResult<Bound<'py, PyArray1<u64>>> {
+        let frames = frames_default!(frames, self);
+        Ok(
+            self.reader
+            .get_sync_number(&frames)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{:?}", e)))?
+            .into_pyarray(py)
+        )
+    }
+
 /************************************************************
      * FULL-FRAME DATA
      * 
@@ -749,16 +823,7 @@ impl SiffIO {
     ) -> PyResult<Bound<'py, PyTuple>>{
         let frames = frames_default!(frames, self);
         
-        let mut offset = 0.0;
-        match params {
-            Some(params) => {
-                let old_units = params.getattr("units")?;
-                params.call_method1("convert_units", ("countbins",))?;
-                offset = params.getattr("tau_offset")?.extract()?;
-                params.call_method1("convert_units", (old_units,))?;
-            },
-            None => {}
-        }
+        let offset = to_offset(&params)?;
 
         let ret_tuple;
         let flim_method = flim_method.unwrap_or("empirical lifetime");
@@ -784,9 +849,7 @@ impl SiffIO {
                 let histogram_length = self.reader.num_flim_bins().
                 map_err(_to_py_error)?;
 
-                let frac_offset = 2.0_f64 * std::f64::consts::PI * offset/histogram_length as f64;
-
-                let lifetime = lifetime * Complex::new(frac_offset.cos(), frac_offset.sin());
+                let lifetime = lifetime / to_complex_offset(&params, histogram_length)?;
                 
                 ret_tuple = (
                     lifetime.into_pyarray(py),
@@ -1083,6 +1146,249 @@ impl SiffIO {
             .map_err(_to_py_error)?
             .into_pyarray(py)
         )
+    }
+
+    /// Returns a timeseries of just the pixels
+    /// within the ROI. This is a 2D array of
+    /// shape (`len(frames)`, `mask.sum()`),
+    /// where `mask.sum()` is the number of pixels
+    /// in the mask that are `True`. If the mask
+    /// is 3D, then the first dimension is assumed
+    /// to be a `z` dimension and the frames will
+    /// be iterated through sequentially, i.e.
+    /// `mask[0]` is applied to `frames[0]`,
+    /// `mask[1]` is applied to `frames[1]`, ... `mask[k]` is
+    /// applied to `frames[n]` where `k = n % mask.shape[0]`.
+
+    /// ## Arguments
+
+    /// * `mask` : np.ndarray[Any, np.dtype[bool]]
+    ///     A boolean mask of the same shape as the frames
+    ///     to be summed (if to be applied to all the frames).
+    ///     If it's a 3D mask, the slowest dimension is assumed
+    ///     to be a `z` dimension and cycles through the frames
+    ///     provided, i.e. `mask[0]` is applied to `frames[0]`,
+    ///     `mask[1]` is applied to `frames[1]`, ... `mask[k]` is
+    ///     applied to `frames[n]` where `k = n % mask.shape[0]`.
+
+    /// * `frames` : Optional[List[int]]
+    ///     A list of frames to retrieve. If `None`, all frames
+    ///     will be retrieved.
+
+    /// * `registration` : Optional[Dict]
+    ///     A dictionary containing registration information
+    ///     (the keys correspond to the frame number, the values
+    ///     are tuples of (y,x) offsets). If None, no registration
+    ///     will be applied.
+
+    /// ## Returns
+
+    /// * `np.ndarray[Any, np.dtype[np.uint16]]`
+    ///     A 2D numpy array containing the sum of the pixels
+    ///     in the ROI for each frame requested. Dimensions are
+    ///     `(len(frames), mask.sum())`, where `mask.sum()` is the
+    ///     number of pixels in the mask that are `True`.
+    #[pyo3(name = "get_roi_1d", signature = (mask, frames = None, registration = None))]
+    pub fn get_roi_1d<'py>(
+        &self,
+        py : Python<'py>,
+        mask : &Bound<'py, PyAny>,
+        frames : Option<Vec<u64>>,
+        registration : Option<HashMap<u64, (i32, i32)>>,
+    ) -> PyResult<Bound<'py, PyAny>>
+    {
+        // Check that mask is a PyArray2 or a PyArray3
+        if !PyArray2::<bool>::type_check(mask)
+        && !PyArray3::<bool>::type_check(&mask) {
+            return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                "Mask must be a 2d (if the same mask is applied to all frames) 
+                or 3d (if the mask is a volume to be cycled through) numpy array"
+            ));
+        }
+
+        let frames = frames_default!(frames, self);
+
+        if PyArray2::<bool>::type_check(&mask) {
+            let mask : PyReadonlyArray2<bool> = mask.extract()?;
+            let mask = mask.as_array();
+            return Ok(
+                self.reader.get_roi_flat(&mask, &frames, registration.as_ref())
+                .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{:?}", e)))?
+                .into_pyarray(py).into_any()
+            )
+        }
+
+        let mask : PyReadonlyArray3<bool> = mask.extract()?;
+        let mask = mask.as_array();
+        Ok(
+            self.reader.get_roi_volume(&mask, &frames, registration.as_ref())
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{:?}", e)))?
+            .into_pyarray(py).into_any()
+        )
+    }
+
+    /// Returns a timeseries of just the pixels
+    ///     within the ROI. This is a 2D array of
+    ///     shape (`len(frames)`, `mask.sum()`),
+    ///     where `mask.sum()` is the number of pixels
+    ///     in the mask that are `True`. If the mask
+    ///     is 3D, then the first dimension is assumed
+    ///     to be a `z` dimension and the frames will
+    ///     be iterated through sequentially, i.e.
+    ///     `mask[0]` is applied to `frames[0]`,
+    ///     `mask[1]` is applied to `frames[1]`, ... `mask[k]` is
+    ///     applied to `frames[n]` where `k = n % mask.shape[0]`.
+
+    ///     ## Arguments
+
+    ///     * `mask` : np.ndarray[Any, np.dtype[bool]]
+    ///         A boolean mask of the same shape as the frames
+    ///         to be summed (if to be applied to all the frames).
+    ///         If it's a 3D mask, the slowest dimension is assumed
+    ///         to be a `z` dimension and cycles through the frames
+    ///         provided, i.e. `mask[0]` is applied to `frames[0]`,
+    ///         `mask[1]` is applied to `frames[1]`, ... `mask[k]` is
+    ///         applied to `frames[n]` where `k = n % mask.shape[0]`.
+
+    ///     * `params` : Optional[FLIMParams]
+    ///         The FLIM parameters to use for the analysis. The offset
+    ///         term will be subtracted from the empirical lifetime values.
+    ///         If `None`, the offset will be 0.
+
+    ///     * `frames` : Optional[List[int]]
+    ///         A list of frames to retrieve. If `None`, all frames
+    ///         will be retrieved.
+
+    ///     * `flim_method` : str
+    ///         The method to use for FLIM analysis. Options are
+    ///         'empirical lifetime' and 'phasor'.
+
+    ///     * `registration` : Optional[Dict]
+    ///         A dictionary containing registration information
+    ///         (the keys correspond to the frame number, the values
+    ///         are tuples of (y,x) offsets). If None, no registration
+    ///         will be applied.
+
+    ///     ## Returns
+
+    ///     * `np.ndarray[Any, np.dtype[np.uint16]]`
+    ///         A 2D numpy array containing the sum of the pixels
+    ///         in the ROI for each frame requested. Dimensions are
+    ///         `(len(frames), mask.sum())`, where `mask.sum()` is the
+    ///         number of pixels in the mask that are `True`.
+    #[pyo3(name = "get_roi_1d_flim", signature = (mask, params, frames = None, flim_method = None, registration = None))]
+    pub fn get_roi_1d_flim<'py>(
+        &self,
+        py : Python<'py>,
+        mask : &Bound<'py, PyAny>,
+        params : Option<&Bound<'py, PyAny>>,
+        frames : Option<Vec<u64>>,
+        flim_method : Option<&str>,
+        registration : Option<HashMap<u64, (i32, i32)>>,
+    ) -> PyResult<Bound<'py, PyTuple>>
+    {
+        // Check that mask is a PyArray2 or a PyArray3
+        if !PyArray2::<bool>::type_check(mask)
+        && !PyArray3::<bool>::type_check(&mask) {
+            return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                "Mask must be a 2d (if the same mask is applied to all frames) 
+                or 3d (if the mask is a volume to be cycled through) numpy array"
+            ));
+        }
+
+        let frames = frames_default!(frames, self);
+
+        let ret_tuple;
+        let flim_method = flim_method.unwrap_or("empirical lifetime");
+        let offset = to_offset(&params)?;
+
+        if PyArray2::<bool>::type_check(&mask) {
+            let mask : PyReadonlyArray2<bool> = mask.extract()?;
+            let mask = mask.as_array();
+            match flim_method {
+                "empirical lifetime" => {
+                    let (lifetime, intensity) = self.reader.get_roi_flim_flat(
+                        &mask, &frames, registration.as_ref()
+                    ).map_err(_to_py_error)?;// fill in when implemented
+
+                    let lifetime = lifetime - offset;
+
+                    ret_tuple = (
+                        lifetime.into_pyarray(py),
+                        intensity.into_pyarray(py),
+                        None::<Bound<'py, PyArray2<f64>>>,
+                    ).into_pyobject(py).unwrap();
+                },
+                "phasor" => {
+                    let (lifetime, intensity) = self.reader.get_roi_phasor_flat(
+                        &mask, &frames, registration.as_ref()
+                    ).map_err(_to_py_error)?;// fill in when implemented
+
+                    let histogram_length = self.reader.num_flim_bins().
+                    map_err(_to_py_error)?;
+
+                    let lifetime = lifetime / to_complex_offset(&params, histogram_length)?;
+
+                    ret_tuple = (
+                        lifetime.into_pyarray(py),
+                        intensity.into_pyarray(py),
+                        None::<Bound<'py, PyArray2<f64>>>,
+                    ).into_pyobject(py).unwrap();
+                },
+                _ => {
+                    return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                        format!("Invalid FLIM method {}. Must be one of \
+                        [`empirical lifetime`, `phasor`]" , flim_method
+                        )
+                    ));
+                }
+            }
+        }
+
+        else {
+            let mask : PyReadonlyArray3<bool> = mask.extract()?;
+            let mask = mask.as_array();
+            match flim_method {
+                "empirical lifetime" => {
+                    let (lifetime, intensity) = self.reader.get_roi_flim_volume(
+                        &mask, &frames, registration.as_ref()
+                    ).map_err(_to_py_error)?;
+
+                    let lifetime = lifetime - offset;
+
+                    ret_tuple = (
+                        lifetime.into_pyarray(py),
+                        intensity.into_pyarray(py),
+                        None::<Bound<'py, PyArray2<f64>>>,
+                    ).into_pyobject(py).unwrap();
+                },
+                "phasor" => {
+                    let (lifetime, intensity) = self.reader.get_roi_phasor_volume(
+                        &mask, &frames, registration.as_ref()
+                    ).map_err(_to_py_error)?;
+
+                    let histogram_length = self.reader.num_flim_bins().
+                    map_err(_to_py_error)?;
+
+                    let lifetime = lifetime / to_complex_offset(&params, histogram_length)?;
+
+                    ret_tuple = (
+                        lifetime.into_pyarray(py),
+                        intensity.into_pyarray(py),
+                        None::<Bound<'py, PyArray2<f64>>>,
+                    ).into_pyobject(py).unwrap();
+                },
+                _ => {
+                    return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                        format!("Invalid FLIM method {}. Must be one of \
+                        [`empirical lifetime`, `phasor`]" , flim_method
+                        )
+                    ));
+                }
+            }
+
+        }
+        Ok(ret_tuple)
     }
 
     /// Mask may have 2 or 3 dimensions, but
@@ -1517,14 +1823,7 @@ impl SiffIO {
 
         let frames = frames_default!(frames, self);
 
-        let mut offset = 0.0;
-        if let Some(params) = params {
-            let old_units = params.getattr("units")?;
-
-            params.call_method1("convert_units", ("countbins",))?;
-            offset = params.getattr("tau_offset")?.extract()?;
-            params.call_method1("convert_units", (old_units,))?;
-        }
+        let offset = to_offset(&params)?;
 
         let flim_method = flim_method.unwrap_or("empirical lifetime");
 
@@ -1553,9 +1852,7 @@ impl SiffIO {
                     let histogram_length = self.reader.num_flim_bins().
                     map_err(_to_py_error)?;
     
-                    let frac_offset = 2.0_f64 * std::f64::consts::PI * offset/histogram_length as f64;
-    
-                    let lifetime = lifetime / Complex::new(frac_offset.cos(), frac_offset.sin());
+                    let lifetime = lifetime / to_complex_offset(&params, histogram_length)?;
 
                     ret_tuple = (
                         lifetime.into_pyarray(py),
@@ -1597,9 +1894,7 @@ impl SiffIO {
                     let histogram_length = self.reader.num_flim_bins().
                     map_err(_to_py_error)?;
     
-                    let frac_offset = 2.0_f64 * std::f64::consts::PI * offset/histogram_length as f64;
-    
-                    let lifetime = lifetime / Complex::new(frac_offset.cos(), frac_offset.sin());
+                    let lifetime = lifetime / to_complex_offset(&params, histogram_length)?;
 
                     ret_tuple = (
                         lifetime.into_pyarray(py),
@@ -1751,14 +2046,7 @@ impl SiffIO {
         }
 
         let frames = frames_default!(frames, self);
-        let mut offset = 0.0;
-        if let Some(params) = params {
-            let old_units = params.getattr("units")?;
-
-            params.call_method1("convert_units", ("countbins",))?;
-            offset = params.getattr("tau_offset")?.extract()?;
-            params.call_method1("convert_units", (old_units,))?;
-        }
+        let offset = to_offset(&params)?;
 
         let flim_method = flim_method.unwrap_or("empirical lifetime");
 
@@ -1790,9 +2078,7 @@ impl SiffIO {
                     let histogram_length = self.reader.num_flim_bins().
                     map_err(_to_py_error)?;
     
-                    let frac_offset = 2.0_f64 * std::f64::consts::PI * offset/histogram_length as f64;
-    
-                    let lifetime = lifetime / Complex::new(frac_offset.cos(), frac_offset.sin());
+                    let lifetime = lifetime / to_complex_offset(&params, histogram_length)?;
 
                     let ret_tuple = (
                         lifetime.into_pyarray(py).call_method0("transpose")?,
@@ -1837,9 +2123,7 @@ impl SiffIO {
                 let histogram_length = self.reader.num_flim_bins().
                 map_err(_to_py_error)?;
 
-                let frac_offset = 2.0_f64 * std::f64::consts::PI * offset/histogram_length as f64;
-
-                let lifetime = lifetime / Complex::new(frac_offset.cos(), frac_offset.sin());
+                let lifetime = lifetime / to_complex_offset(&params, histogram_length)?;
 
                 let ret_tuple = (
                     lifetime.into_pyarray(py).call_method0("transpose")?,

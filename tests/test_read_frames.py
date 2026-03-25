@@ -1,4 +1,7 @@
 import numpy as np
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from corrosiffpy import SiffIO
 
 def test_read_frames(siffreaders):
 
@@ -19,6 +22,43 @@ def test_read_frames(siffreaders):
         framelist = list(range(N_FRAMES))
 
         siffreader.get_frames(frames = framelist, registration=dummy_reg)
+
+def test_roi_1d(siffreaders):
+    
+    for siffreader in siffreaders:
+        siffreader : SiffIO
+        frames = siffreader.get_frames(registration=None)
+        roi = np.random.rand(*siffreader.frame_shape()) > 0.3
+
+        flat_roi = siffreader.get_roi_1d(roi, registration=None) 
+        assert (flat_roi.dtype == np.uint16)
+        assert flat_roi.shape == (siffreader.num_frames(),np.sum(roi))
+        assert np.allclose(
+            frames[:, roi],
+            flat_roi,
+        )
+
+        NUM_ROIS = 7
+        roi_vol = np.random.rand(NUM_ROIS, *siffreader.frame_shape()) > 0.3
+
+        together = siffreader.get_roi_1d(roi_vol, registration=None)
+        assert (together.dtype == np.uint16)
+        assert (together.shape[0] == int(siffreader.num_frames()/ NUM_ROIS))
+
+        frames = frames[:int(siffreader.num_frames()/ NUM_ROIS)* NUM_ROIS]
+        frames = frames.reshape(
+            (
+                int(siffreader.num_frames()/ NUM_ROIS),
+                NUM_ROIS,
+                *siffreader.frame_shape()
+            )
+        )
+
+        masked_frames = frames[:, roi_vol]
+        assert np.allclose(
+            masked_frames,
+            together,
+        )
 
 def test_sum_2d_mask(siffreaders):
 
