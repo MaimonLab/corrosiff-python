@@ -11,6 +11,7 @@ use pyo3::types::{PyDict, PyList, PyTuple};
 use corrosiff::{CorrosiffError, SiffReader, FramesError};
 
 use std::collections::HashMap;
+use std::f32::consts::E;
 
 /// Almost all of the errors that can be thrown by the `corrosiff` library
 /// have standard explanations that should be converted to informative
@@ -1147,6 +1148,46 @@ impl SiffIO {
         )
     }
 
+    /// Returns a timeseries of just the pixels
+    /// within the ROI. This is a 2D array of
+    /// shape (`len(frames)`, `mask.sum()`),
+    /// where `mask.sum()` is the number of pixels
+    /// in the mask that are `True`. If the mask
+    /// is 3D, then the first dimension is assumed
+    /// to be a `z` dimension and the frames will
+    /// be iterated through sequentially, i.e.
+    /// `mask[0]` is applied to `frames[0]`,
+    /// `mask[1]` is applied to `frames[1]`, ... `mask[k]` is
+    /// applied to `frames[n]` where `k = n % mask.shape[0]`.
+
+    /// ## Arguments
+
+    /// * `mask` : np.ndarray[Any, np.dtype[bool]]
+    ///     A boolean mask of the same shape as the frames
+    ///     to be summed (if to be applied to all the frames).
+    ///     If it's a 3D mask, the slowest dimension is assumed
+    ///     to be a `z` dimension and cycles through the frames
+    ///     provided, i.e. `mask[0]` is applied to `frames[0]`,
+    ///     `mask[1]` is applied to `frames[1]`, ... `mask[k]` is
+    ///     applied to `frames[n]` where `k = n % mask.shape[0]`.
+
+    /// * `frames` : Optional[List[int]]
+    ///     A list of frames to retrieve. If `None`, all frames
+    ///     will be retrieved.
+
+    /// * `registration` : Optional[Dict]
+    ///     A dictionary containing registration information
+    ///     (the keys correspond to the frame number, the values
+    ///     are tuples of (y,x) offsets). If None, no registration
+    ///     will be applied.
+
+    /// ## Returns
+
+    /// * `np.ndarray[Any, np.dtype[np.uint16]]`
+    ///     A 2D numpy array containing the sum of the pixels
+    ///     in the ROI for each frame requested. Dimensions are
+    ///     `(len(frames), mask.sum())`, where `mask.sum()` is the
+    ///     number of pixels in the mask that are `True`.
     #[pyo3(name = "get_roi_1d", signature = (mask, frames = None, registration = None))]
     pub fn get_roi_1d<'py>(
         &self,
@@ -1184,6 +1225,170 @@ impl SiffIO {
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{:?}", e)))?
             .into_pyarray(py).into_any()
         )
+    }
+
+    /// Returns a timeseries of just the pixels
+    ///     within the ROI. This is a 2D array of
+    ///     shape (`len(frames)`, `mask.sum()`),
+    ///     where `mask.sum()` is the number of pixels
+    ///     in the mask that are `True`. If the mask
+    ///     is 3D, then the first dimension is assumed
+    ///     to be a `z` dimension and the frames will
+    ///     be iterated through sequentially, i.e.
+    ///     `mask[0]` is applied to `frames[0]`,
+    ///     `mask[1]` is applied to `frames[1]`, ... `mask[k]` is
+    ///     applied to `frames[n]` where `k = n % mask.shape[0]`.
+
+    ///     ## Arguments
+
+    ///     * `mask` : np.ndarray[Any, np.dtype[bool]]
+    ///         A boolean mask of the same shape as the frames
+    ///         to be summed (if to be applied to all the frames).
+    ///         If it's a 3D mask, the slowest dimension is assumed
+    ///         to be a `z` dimension and cycles through the frames
+    ///         provided, i.e. `mask[0]` is applied to `frames[0]`,
+    ///         `mask[1]` is applied to `frames[1]`, ... `mask[k]` is
+    ///         applied to `frames[n]` where `k = n % mask.shape[0]`.
+
+    ///     * `params` : Optional[FLIMParams]
+    ///         The FLIM parameters to use for the analysis. The offset
+    ///         term will be subtracted from the empirical lifetime values.
+    ///         If `None`, the offset will be 0.
+
+    ///     * `frames` : Optional[List[int]]
+    ///         A list of frames to retrieve. If `None`, all frames
+    ///         will be retrieved.
+
+    ///     * `flim_method` : str
+    ///         The method to use for FLIM analysis. Options are
+    ///         'empirical lifetime' and 'phasor'.
+
+    ///     * `registration` : Optional[Dict]
+    ///         A dictionary containing registration information
+    ///         (the keys correspond to the frame number, the values
+    ///         are tuples of (y,x) offsets). If None, no registration
+    ///         will be applied.
+
+    ///     ## Returns
+
+    ///     * `np.ndarray[Any, np.dtype[np.uint16]]`
+    ///         A 2D numpy array containing the sum of the pixels
+    ///         in the ROI for each frame requested. Dimensions are
+    ///         `(len(frames), mask.sum())`, where `mask.sum()` is the
+    ///         number of pixels in the mask that are `True`.
+    #[pyo3(name = "get_roi_1d_flim", signature = (mask, params, frames = None, flim_method = None, registration = None))]
+    pub fn get_roi_1d_flim<'py>(
+        &self,
+        py : Python<'py>,
+        mask : &Bound<'py, PyAny>,
+        params : Option<&Bound<'py, PyAny>>,
+        frames : Option<Vec<u64>>,
+        flim_method : Option<&str>,
+        registration : Option<HashMap<u64, (i32, i32)>>,
+    ) -> PyResult<Bound<'py, PyTuple>>
+    {
+        // Check that mask is a PyArray2 or a PyArray3
+        if !PyArray2::<bool>::type_check(mask)
+        && !PyArray3::<bool>::type_check(&mask) {
+            return Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                "Mask must be a 2d (if the same mask is applied to all frames) 
+                or 3d (if the mask is a volume to be cycled through) numpy array"
+            ));
+        }
+
+        let frames = frames_default!(frames, self);
+
+        let ret_tuple;
+        let flim_method = flim_method.unwrap_or("empirical lifetime");
+        let offset = to_offset(&params)?;
+
+        if PyArray2::<bool>::type_check(&mask) {
+            let mask : PyReadonlyArray2<bool> = mask.extract()?;
+            let mask = mask.as_array();
+            match flim_method {
+                "empirical lifetime" => {
+                    let (lifetime, intensity) = self.reader.get_roi_flim_flat(
+                        &mask, &frames, registration.as_ref()
+                    ).map_err(_to_py_error)?;// fill in when implemented
+
+                    let lifetime = lifetime - offset;
+
+                    ret_tuple = (
+                        lifetime.into_pyarray(py),
+                        intensity.into_pyarray(py),
+                        None::<Bound<'py, PyArray2<f64>>>,
+                    ).into_pyobject(py).unwrap();
+                },
+                "phasor" => {
+                    let (lifetime, intensity) = self.reader.get_roi_phasor_flat(
+                        &mask, &frames, registration.as_ref()
+                    ).map_err(_to_py_error)?;// fill in when implemented
+
+                    let histogram_length = self.reader.num_flim_bins().
+                    map_err(_to_py_error)?;
+
+                    let lifetime = lifetime / to_complex_offset(&params, histogram_length)?;
+
+                    ret_tuple = (
+                        lifetime.into_pyarray(py),
+                        intensity.into_pyarray(py),
+                        None::<Bound<'py, PyArray2<f64>>>,
+                    ).into_pyobject(py).unwrap();
+                },
+                _ => {
+                    return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                        format!("Invalid FLIM method {}. Must be one of \
+                        [`empirical lifetime`, `phasor`]" , flim_method
+                        )
+                    ));
+                }
+            }
+        }
+
+        else {
+            let mask : PyReadonlyArray3<bool> = mask.extract()?;
+            let mask = mask.as_array();
+            match flim_method {
+                "empirical lifetime" => {
+                    let (lifetime, intensity) = self.reader.get_roi_flim_volume(
+                        &mask, &frames, registration.as_ref()
+                    ).map_err(_to_py_error)?;
+
+                    let lifetime = lifetime - offset;
+
+                    ret_tuple = (
+                        lifetime.into_pyarray(py),
+                        intensity.into_pyarray(py),
+                        None::<Bound<'py, PyArray2<f64>>>,
+                    ).into_pyobject(py).unwrap();
+                },
+                "phasor" => {
+                    let (lifetime, intensity) = self.reader.get_roi_phasor_volume(
+                        &mask, &frames, registration.as_ref()
+                    ).map_err(_to_py_error)?;
+
+                    let histogram_length = self.reader.num_flim_bins().
+                    map_err(_to_py_error)?;
+
+                    let lifetime = lifetime / to_complex_offset(&params, histogram_length)?;
+
+                    ret_tuple = (
+                        lifetime.into_pyarray(py),
+                        intensity.into_pyarray(py),
+                        None::<Bound<'py, PyArray2<f64>>>,
+                    ).into_pyobject(py).unwrap();
+                },
+                _ => {
+                    return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                        format!("Invalid FLIM method {}. Must be one of \
+                        [`empirical lifetime`, `phasor`]" , flim_method
+                        )
+                    ));
+                }
+            }
+
+        }
+        Ok(ret_tuple)
     }
 
     /// Mask may have 2 or 3 dimensions, but

@@ -31,6 +31,7 @@ def test_roi_1d(siffreaders):
         roi = np.random.rand(*siffreader.frame_shape()) > 0.3
 
         flat_roi = siffreader.get_roi_1d(roi, registration=None) 
+        assert (flat_roi.dtype == np.uint16)
         assert flat_roi.shape == (siffreader.num_frames(),np.sum(roi))
         assert np.allclose(
             frames[:, roi],
@@ -40,10 +41,9 @@ def test_roi_1d(siffreaders):
         NUM_ROIS = 7
         roi_vol = np.random.rand(NUM_ROIS, *siffreader.frame_shape()) > 0.3
 
-        print(roi_vol.shape)
         together = siffreader.get_roi_1d(roi_vol, registration=None)
+        assert (together.dtype == np.uint16)
         assert (together.shape[0] == int(siffreader.num_frames()/ NUM_ROIS))
-        print(together.shape)
 
         frames = frames[:int(siffreader.num_frames()/ NUM_ROIS)* NUM_ROIS]
         frames = frames.reshape(
@@ -53,10 +53,10 @@ def test_roi_1d(siffreaders):
                 *siffreader.frame_shape()
             )
         )
-        print(frames.shape)
 
+        masked_frames = frames[:, roi_vol]
         assert np.allclose(
-            frames[:, roi_vol],
+            masked_frames,
             together,
         )
 
