@@ -41,7 +41,7 @@ jobs:
           - '3.11'
           - '3.12'
           # - 'pypy3.10'
-          # '3.13'
+          - '3.13'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -117,7 +117,7 @@ jobs:
           - '3.11'
           - '3.12'
           - 'pypy3.10'
-          # '3.13'
+          - '3.13'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -163,6 +163,13 @@ jobs:
     runs-on: ${{ matrix.platform.runner }}
     strategy:
       matrix:
+        python-version:
+          - '3.9'
+          - '3.10'
+          - '3.11'
+          - '3.12'
+         # - 'pypy3.10'
+          - '3.13'
         platform:
           - runner: windows-latest
             target: x64
@@ -211,6 +218,13 @@ jobs:
     runs-on: ${{ matrix.platform.runner }}
     strategy:
       matrix:
+        python-version:
+          - '3.9'
+          - '3.10'
+          - '3.11'
+          - '3.12'
+          - 'pypy3.10'
+          - '3.13'
         platform:
           - runner: macos-13
             target: x86_64
